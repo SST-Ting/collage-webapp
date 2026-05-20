@@ -75,6 +75,11 @@ img {
 
 .app-shell-dark {
   background: var(--sb-lava);
+  height: 100svh;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .home-page {
@@ -179,6 +184,7 @@ img {
 
 .app-bar {
   position: sticky;
+  flex: 0 0 auto;
   top: 0;
   z-index: 30;
   min-height: 62px;
@@ -439,6 +445,13 @@ img {
 .template-preview-compact {
   height: 100%;
   max-width: none;
+  border-radius: 14px 14px 0 0;
+}
+
+.template-preview-compact .template-base-image {
+  top: 18px;
+  height: calc(100% - 18px);
+  object-fit: contain;
 }
 
 .preview-paper-grid {
@@ -672,11 +685,13 @@ img {
 }
 
 .editor-page {
-  min-height: calc(100dvh - 62px);
+  flex: 1;
+  height: auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 14px 14px 0;
+  padding: 14px 14px 108px;
+  overflow: hidden;
 }
 
 .editor-canvas-wrap {
@@ -689,7 +704,7 @@ img {
 
 .editor-canvas {
   width: min(100%, 380px);
-  max-height: calc(100dvh - 286px);
+  max-height: 100%;
   position: relative;
   overflow: hidden;
   border-radius: 20px;
@@ -700,12 +715,9 @@ img {
   box-shadow: 0 7px 0 #5c4a3e, 0 22px 44px rgba(0, 0, 0, 0.4);
 }
 
-.editor-page-sheet-closed .editor-canvas {
-  max-height: calc(100dvh - 190px);
-}
-
-.editor-page-sheet-closed .editor-actions {
-  padding-bottom: calc(18px + env(safe-area-inset-bottom));
+.editor-page-sheet-open .editor-actions {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .canvas-title {
@@ -845,12 +857,18 @@ img {
 }
 
 .editor-actions {
+  position: fixed;
+  left: max(14px, calc((100vw - 480px) / 2 + 14px));
+  right: max(14px, calc((100vw - 480px) / 2 + 14px));
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  z-index: 40;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: 8px;
   color: var(--sb-paper);
+  transition: opacity 140ms ease;
 }
 
 .quick-chip {
@@ -885,11 +903,19 @@ img {
 }
 
 .photo-picker-sheet {
-  margin: 0 -14px;
+  position: fixed;
+  left: max(0px, calc((100vw - 480px) / 2));
+  right: max(0px, calc((100vw - 480px) / 2));
+  bottom: 0;
+  z-index: 45;
+  min-height: min(34svh, 260px);
+  max-height: min(42svh, 320px);
+  margin: 0;
   border-radius: 24px 24px 0 0;
   background: var(--sb-paper);
-  padding: 10px 14px 24px;
+  padding: 10px 14px calc(24px + env(safe-area-inset-bottom));
   box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.16);
+  overflow: hidden;
 }
 
 .sheet-handle {

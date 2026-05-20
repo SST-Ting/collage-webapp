@@ -154,7 +154,7 @@ export default function EditorPage() {
             <div className="editor-actions">
               <button className="quick-chip quick-chip-sun" onClick={randomFill} disabled={photos.length === 0}>
                 <Icon name="shuffle" size={16} />
-                Random Fill
+                Random
               </button>
               <button className="quick-chip" onClick={() => inputRef.current?.click()} disabled={uploading}>
                 <Icon name="upload" size={16} />
@@ -162,7 +162,7 @@ export default function EditorPage() {
               </button>
               <button className="quick-chip" onClick={downloadCollage} disabled={!downloadSvg || downloading}>
                 <Icon name="download" size={16} />
-                {downloading ? 'Downloading' : 'Download PNG'}
+                {downloading ? 'Downloading' : 'Download'}
               </button>
               <span className="save-indicator">
                 {saving ? 'Saving...' : `${filledCount}/${template.template_frames?.length ?? 0} filled`}
