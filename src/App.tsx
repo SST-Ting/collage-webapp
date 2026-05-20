@@ -28,6 +28,11 @@ function useMobileViewportVars() {
     const root = document.documentElement;
     let lockedBottomInset = 0;
 
+    function lockViewportHeight() {
+      const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+      root.style.setProperty('--app-viewport-height', `${viewportHeight}px`);
+    }
+
     function updateBottomInset() {
       const viewport = window.visualViewport;
       const viewportHeight = viewport?.height ?? window.innerHeight;
@@ -40,9 +45,11 @@ function useMobileViewportVars() {
 
     function resetViewportVars() {
       lockedBottomInset = 0;
+      lockViewportHeight();
       updateBottomInset();
     }
 
+    lockViewportHeight();
     updateBottomInset();
 
     window.addEventListener('resize', updateBottomInset);

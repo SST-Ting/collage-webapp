@@ -8,6 +8,8 @@
   flex-direction: column;
   padding: 8px 14px calc(86px + var(--editor-actions-gap) + var(--editor-bottom-inset));
   overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: pan-x;
 }
 
 .editor-canvas-wrap {
