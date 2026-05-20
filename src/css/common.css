@@ -74,7 +74,7 @@ img {
 
 .app-shell-dark {
   background: var(--sb-lava);
-  height: 100svh;
+  height: var(--app-viewport-height, 100svh);
   min-height: 0;
   display: flex;
   flex-direction: column;

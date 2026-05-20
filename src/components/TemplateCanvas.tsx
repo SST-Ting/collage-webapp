@@ -51,6 +51,8 @@ export function EditorCanvas({
 }: EditorCanvasProps) {
   const frames = template.template_frames ?? [];
   const usesSvgImageReplacement = frames.some(isSvgImageReplaceFrame);
+  const displayCrop: DisplayCrop | null = null;
+  const visibleHeight = Number(template.base_height);
 
   useEffect(() => {
     if (!usesSvgImageReplacement) onRenderedSvgChange?.(null);
@@ -60,17 +62,13 @@ export function EditorCanvas({
     <div className="editor-canvas-wrap">
       <div
         className="editor-canvas"
-        style={{ aspectRatio: `${template.base_width} / ${template.base_height}` }}
         onClick={onCanvasClick}
       >
         <div
-          className={
-            usesSvgImageReplacement
-              ? 'editor-template-window editor-template-window-crop'
-              : 'editor-template-window'
-          }
+          className="editor-template-window"
+          style={{ aspectRatio: `${template.base_width} / ${visibleHeight}` }}
         >
-          <div className="editor-template-content">
+          <div className="editor-template-content" style={templateContentStyle(template, visibleHeight, displayCrop)}>
             {usesSvgImageReplacement ? (
               <TemplateSvgImage
                 template={template}
@@ -93,10 +91,11 @@ export function EditorCanvas({
             {frames.map((frame, index) => (
               <FrameButton
                 key={frame.id}
-                frame={frame}
-                template={template}
-                index={index}
-                photo={assignments[frame.id]}
+              frame={frame}
+              template={template}
+              displayCrop={displayCrop}
+              index={index}
+              photo={assignments[frame.id]}
                 selected={selectedFrameId === frame.id}
                 onClick={() => onFrameClick(frame)}
               />
@@ -108,6 +107,11 @@ export function EditorCanvas({
     </div>
   );
 }
+
+type DisplayCrop = {
+  top: number;
+  bottom: number;
+};
 
 function TemplateBaseImage({ template }: { template: Template }) {
   if (!template.preview_image_url) return null;
@@ -208,6 +212,7 @@ function FrameBox({
 function FrameButton({
   frame,
   template,
+  displayCrop,
   index,
   photo,
   selected,
@@ -215,12 +220,13 @@ function FrameButton({
 }: {
   frame: TemplateFrame;
   template: Template;
+  displayCrop?: DisplayCrop | null;
   index: number;
   photo?: UploadedPhoto;
   selected: boolean;
   onClick: () => void;
 }) {
-  const style = frameStyle(frame, template);
+  const style = frameStyle(frame, template, displayCrop);
   const hasClipPolygon = Boolean(getClipPolygon(frame));
   const isSvgReplace = isSvgImageReplaceFrame(frame);
 
@@ -254,18 +260,25 @@ function FrameButton({
   );
 }
 
-function frameStyle(frame: TemplateFrame, template: Template): React.CSSProperties {
+function frameStyle(
+  frame: TemplateFrame,
+  template: Template,
+  displayCrop?: DisplayCrop | null,
+): React.CSSProperties {
   const clipPolygon = getClipPolygon(frame);
   const bounds = clipPolygon ? polygonBounds(clipPolygon) : null;
   const frameX = bounds?.x ?? Number(frame.x);
   const frameY = bounds?.y ?? Number(frame.y);
   const frameWidth = bounds?.width ?? Number(frame.width);
   const frameHeight = bounds?.height ?? Number(frame.height);
+  const cropTop = displayCrop?.top ?? 0;
+  const cropBottom = displayCrop?.bottom ?? 0;
+  const visibleHeight = Number(template.base_height) - cropTop - cropBottom;
 
   const left = (frameX / Number(template.base_width)) * 100;
-  const top = (frameY / Number(template.base_height)) * 100;
+  const top = ((frameY - cropTop) / visibleHeight) * 100;
   const width = (frameWidth / Number(template.base_width)) * 100;
-  const height = (frameHeight / Number(template.base_height)) * 100;
+  const height = (frameHeight / visibleHeight) * 100;
   const cssClipPolygon = clipPolygon && bounds
     ? toCssPolygon(clipPolygon, bounds)
     : undefined;
@@ -285,6 +298,30 @@ function frameStyle(frame: TemplateFrame, template: Template): React.CSSProperti
   }
 
   return style;
+}
+
+function getEditorDisplayCrop(template: Template): DisplayCrop {
+  const baseHeight = Number(template.base_height);
+  const crop = Math.min(76, Math.max(42, baseHeight * 0.085));
+
+  return {
+    top: crop,
+    bottom: crop,
+  };
+}
+
+function templateContentStyle(
+  template: Template,
+  visibleHeight: number,
+  displayCrop?: DisplayCrop | null,
+): React.CSSProperties {
+  if (!displayCrop) return {};
+
+  const baseHeight = Number(template.base_height);
+  return {
+    top: `${(-displayCrop.top / visibleHeight) * 100}%`,
+    height: `${(baseHeight / visibleHeight) * 100}%`,
+  };
 }
 
 function replaceSvgImageHrefs(
