@@ -26,29 +26,33 @@ function UploadRedirect() {
 function useMobileViewportVars() {
   useEffect(() => {
     const root = document.documentElement;
+    let lockedBottomInset = 0;
 
-    function updateViewportVars() {
+    function updateBottomInset() {
       const viewport = window.visualViewport;
       const viewportHeight = viewport?.height ?? window.innerHeight;
       const viewportOffsetTop = viewport?.offsetTop ?? 0;
       const bottomInset = Math.max(0, window.innerHeight - viewportHeight - viewportOffsetTop);
+      lockedBottomInset = Math.max(lockedBottomInset, bottomInset);
 
-      root.style.setProperty('--app-viewport-height', `${viewportHeight}px`);
-      root.style.setProperty('--browser-bottom-inset', `${bottomInset}px`);
+      root.style.setProperty('--browser-bottom-inset', `${lockedBottomInset}px`);
     }
 
-    updateViewportVars();
+    function resetViewportVars() {
+      lockedBottomInset = 0;
+      updateBottomInset();
+    }
 
-    window.addEventListener('resize', updateViewportVars);
-    window.addEventListener('orientationchange', updateViewportVars);
-    window.visualViewport?.addEventListener('resize', updateViewportVars);
-    window.visualViewport?.addEventListener('scroll', updateViewportVars);
+    updateBottomInset();
+
+    window.addEventListener('resize', updateBottomInset);
+    window.addEventListener('orientationchange', resetViewportVars);
+    window.visualViewport?.addEventListener('resize', updateBottomInset);
 
     return () => {
-      window.removeEventListener('resize', updateViewportVars);
-      window.removeEventListener('orientationchange', updateViewportVars);
-      window.visualViewport?.removeEventListener('resize', updateViewportVars);
-      window.visualViewport?.removeEventListener('scroll', updateViewportVars);
+      window.removeEventListener('resize', updateBottomInset);
+      window.removeEventListener('orientationchange', resetViewportVars);
+      window.visualViewport?.removeEventListener('resize', updateBottomInset);
     };
   }, []);
 }
