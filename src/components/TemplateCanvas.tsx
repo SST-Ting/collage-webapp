@@ -63,37 +63,47 @@ export function EditorCanvas({
         style={{ aspectRatio: `${template.base_width} / ${template.base_height}` }}
         onClick={onCanvasClick}
       >
-        {usesSvgImageReplacement ? (
-          <TemplateSvgImage
-            template={template}
-            frames={frames}
-            assignments={assignments}
-            onRenderedSvgChange={onRenderedSvgChange}
-          />
-        ) : (
-          <TemplateBaseImage template={template} />
-        )}
-        {!template.preview_image_url && (
-          <>
-            <div className="preview-paper-grid" />
-            <div className="canvas-title">
-              <span>雙洞火山泳綑</span>
-              <strong>橋咀島西浮潛</strong>
-            </div>
-          </>
-        )}
-        {frames.map((frame, index) => (
-          <FrameButton
-            key={frame.id}
-            frame={frame}
-            template={template}
-            index={index}
-            photo={assignments[frame.id]}
-            selected={selectedFrameId === frame.id}
-            onClick={() => onFrameClick(frame)}
-          />
-        ))}
-        {!template.preview_image_url && <div className="canvas-footer">Splashbook · Event memory</div>}
+        <div
+          className={
+            usesSvgImageReplacement
+              ? 'editor-template-window editor-template-window-crop'
+              : 'editor-template-window'
+          }
+        >
+          <div className="editor-template-content">
+            {usesSvgImageReplacement ? (
+              <TemplateSvgImage
+                template={template}
+                frames={frames}
+                assignments={assignments}
+                onRenderedSvgChange={onRenderedSvgChange}
+              />
+            ) : (
+              <TemplateBaseImage template={template} />
+            )}
+            {!template.preview_image_url && (
+              <>
+                <div className="preview-paper-grid" />
+                <div className="canvas-title">
+                  <span>雙洞火山泳綑</span>
+                  <strong>橋咀島西浮潛</strong>
+                </div>
+              </>
+            )}
+            {frames.map((frame, index) => (
+              <FrameButton
+                key={frame.id}
+                frame={frame}
+                template={template}
+                index={index}
+                photo={assignments[frame.id]}
+                selected={selectedFrameId === frame.id}
+                onClick={() => onFrameClick(frame)}
+              />
+            ))}
+            {!template.preview_image_url && <div className="canvas-footer">Splashbook · Event memory</div>}
+          </div>
+        </div>
       </div>
     </div>
   );

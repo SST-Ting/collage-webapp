@@ -70,7 +70,7 @@ export async function uploadPhoto(file: File, templateId: string) {
   const clientSessionId = getClientSessionId();
   const safeName = sanitizeFileName(file.name) || 'photo';
   const ext = file.name.includes('.') ? file.name.split('.').pop() : 'jpg';
-  const storagePath = `${clientSessionId}/${templateId}/${Date.now()}-${crypto.randomUUID()}-${safeName}.${ext}`;
+  const storagePath = `${clientSessionId}/${templateId}/${Date.now()}-${createUploadId()}-${safeName}.${ext}`;
   const { error: uploadError } = await supabase.storage
     .from(USER_PHOTOS_BUCKET)
     .upload(storagePath, file, {
@@ -102,6 +102,14 @@ export async function uploadPhoto(file: File, templateId: string) {
 
   if (error) throw error;
   return data as UploadedPhoto;
+}
+
+function createUploadId() {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
 }
 
 export async function assignPhotoToFrame(photo: UploadedPhoto, frameId: string, templateId: string) {

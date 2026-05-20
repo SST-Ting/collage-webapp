@@ -9,6 +9,7 @@ import type { FrameAssignments, Template, TemplateFrame, UploadedPhoto } from '.
 export default function EditorPage() {
   const { templateId = '' } = useParams();
   const inputRef = useRef<HTMLInputElement>(null);
+  const sheetDragStartRef = useRef<number | null>(null);
   const [template, setTemplate] = useState<Template | null>(null);
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
   const [selectedFrame, setSelectedFrame] = useState<TemplateFrame | null>(null);
@@ -105,6 +106,20 @@ export default function EditorPage() {
     setSelectedFrame((current) => (current?.id === frame.id ? null : frame));
   }
 
+  function startSheetDrag(clientY: number) {
+    sheetDragStartRef.current = clientY;
+  }
+
+  function finishSheetDrag(clientY: number) {
+    const startY = sheetDragStartRef.current;
+    sheetDragStartRef.current = null;
+    if (startY === null) return;
+
+    if (clientY - startY > 48) {
+      setSelectedFrame(null);
+    }
+  }
+
   async function downloadCollage() {
     if (!template || !downloadSvg) {
       setError('The collage is still loading. Please try again in a moment.');
@@ -170,12 +185,51 @@ export default function EditorPage() {
             </div>
 
             {selectedFrame && (
-              <section className="photo-picker-sheet">
+              <section
+                className="photo-picker-sheet"
+                onPointerDown={(event) => startSheetDrag(event.clientY)}
+                onPointerUp={(event) => finishSheetDrag(event.clientY)}
+                onPointerCancel={() => {
+                  sheetDragStartRef.current = null;
+                }}
+              >
                 <div className="sheet-handle" />
                 <div className="sheet-title">
                   <div>
                     <strong>{selectedFrame.name ?? 'Selected frame'}</strong>
                     <span>Tap a photo to fill this frame</span>
+                  </div>
+                  <div className="sheet-actions" onPointerDown={(event) => event.stopPropagation()}>
+                    <button
+                      type="button"
+                      className="sheet-icon-button sheet-icon-button-sun"
+                      onClick={randomFill}
+                      disabled={photos.length === 0}
+                      aria-label="Random fill"
+                      title="Random fill"
+                    >
+                      <Icon name="shuffle" size={17} />
+                    </button>
+                    <button
+                      type="button"
+                      className="sheet-icon-button"
+                      onClick={() => inputRef.current?.click()}
+                      disabled={uploading}
+                      aria-label="Upload photos"
+                      title="Upload photos"
+                    >
+                      <Icon name="upload" size={17} />
+                    </button>
+                    <button
+                      type="button"
+                      className="sheet-icon-button"
+                      onClick={downloadCollage}
+                      disabled={!downloadSvg || downloading}
+                      aria-label="Download PNG"
+                      title="Download PNG"
+                    >
+                      <Icon name="download" size={17} />
+                    </button>
                   </div>
                 </div>
 
