@@ -1,0 +1,12 @@
+[31m(!) Failed to run dependency scan. Skipping dependency pre-bundling. Error: The following dependencies are imported but could not be resolved:
+
+  [36mreact[31m [37m[2m(imported by D:/live/ivelite/雙洞火山泳綑 ＋ 橋咀島西浮潛/event-collage-app/src/components/TemplateCanvas.tsx)[22m[31m
+  [36mreact-dom/client[31m [37m[2m(imported by D:/live/ivelite/雙洞火山泳綑 ＋ 橋咀島西浮潛/event-collage-app/src/main.tsx)[22m[31m
+  [36mreact-router-dom[31m [37m[2m(imported by D:/live/ivelite/雙洞火山泳綑 ＋ 橋咀島西浮潛/event-collage-app/src/components/Layout.tsx)[22m[31m
+  [36mreact/jsx-dev-runtime[31m [37m[2m(imported by D:/live/ivelite/雙洞火山泳綑 ＋ 橋咀島西浮潛/event-collage-app/src/components/TemplateCanvas.tsx)[22m[31m
+  [36m@supabase/supabase-js[31m [37m[2m(imported by D:/live/ivelite/雙洞火山泳綑 ＋ 橋咀島西浮潛/event-collage-app/src/lib/supabase.ts)[22m[31m
+
+Are they installed?
+    at file:///D:/live/ivelite/%E9%9B%99%E6%B4%9E%E7%81%AB%E5%B1%B1%E6%B3%B3%E7%B6%91%20%EF%BC%8B%20%E6%A9%8B%E5%92%80%E5%B3%B6%E8%A5%BF%E6%B5%AE%E6%BD%9B/event-collage-app/node_modules/vite/dist/node/chunks/config.js:31923:33
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///D:/live/ivelite/%E9%9B%99%E6%B4%9E%E7%81%AB%E5%B1%B1%E6%B3%B3%E7%B6%91%20%EF%BC%8B%20%E6%A9%8B%E5%92%80%E5%B3%B6%E8%A5%BF%E6%B5%AE%E6%BD%9B/event-collage-app/node_modules/vite/dist/node/chunks/config.js:34131:15[39m

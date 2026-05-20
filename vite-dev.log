@@ -1,0 +1,25 @@
+
+> event-collage-app@0.1.0 dev
+> vite --host 0.0.0.0 --port 5173
+
+
+  [32m[1mVITE[22m v7.3.3[39m  [2mready in [0m[1m221[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5173[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://10.200.16.71:[1m5173[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.194.1:[1m5173[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.68.1:[1m5173[22m/[39m
+[2m6:44:11 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/Icon.tsx[22m
+[2m6:44:11 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/Layout.tsx[22m
+[2m6:44:11 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/TemplateCanvas.tsx[22m
+[2m7:40:41 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/TemplateCanvas.tsx[22m
+[2m8:07:40 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/TemplateCanvas.tsx[22m
+[2m8:17:30 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/TemplateCanvas.tsx[22m
+[2m9:58:04 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mcollage-webapp/dist/index.html[22m
+[2m9:58:06 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mcollage-webapp/index.html[22m
+[2m9:58:06 AM[22m [36m[1m[vite][22m[39m changed tsconfig file detected: D:/live/ivelite/雙洞火山泳綑 ＋ 橋咀島西浮潛/event-collage-app/collage-webapp/tsconfig.json - Clearing cache and forcing full-reload to ensure TypeScript is compiled with updated config values.
+[2m9:58:06 AM[22m [36m[1m[vite][22m[39m changed tsconfig file detected: D:/live/ivelite/雙洞火山泳綑 ＋ 橋咀島西浮潛/event-collage-app/tsconfig.json - Clearing cache and forcing full-reload to ensure TypeScript is compiled with updated config values.
+[2m9:58:06 AM[22m [36m[1m[vite][22m[39m [32m.env.local changed, restarting server...[39m
+[2m9:58:06 AM[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[2m9:58:06 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mindex.html[22m
+[2m9:58:06 AM[22m [36m[1m[vite][22m[39m server restarted.
