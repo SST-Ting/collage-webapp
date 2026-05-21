@@ -30,10 +30,7 @@ export default function EditorPage() {
         if (!alive) return;
         setTemplate(templateData);
         setPhotos(uploaded);
-        setAssignments({
-          ...assignmentsFromPhotos(uploaded),
-          ...loadStoredAssignments(templateId, uploaded),
-        });
+        setAssignments(loadStoredAssignments(templateId, uploaded));
         setSelectedFrame(null);
         setError(null);
       })
@@ -88,6 +85,7 @@ export default function EditorPage() {
     };
     setAssignments(nextAssignments);
     persistAssignments(templateId, nextAssignments);
+    setSelectedFrame(null);
     window.setTimeout(() => setSaving(false), 120);
   }
 
@@ -185,15 +183,15 @@ export default function EditorPage() {
             </div>
 
             {selectedFrame && (
-              <section
-                className="photo-picker-sheet"
-                onPointerDown={(event) => startSheetDrag(event.clientY)}
-                onPointerUp={(event) => finishSheetDrag(event.clientY)}
-                onPointerCancel={() => {
-                  sheetDragStartRef.current = null;
-                }}
-              >
-                <div className="sheet-handle" />
+              <section className="photo-picker-sheet">
+                <div
+                  className="sheet-handle"
+                  onPointerDown={(event) => startSheetDrag(event.clientY)}
+                  onPointerUp={(event) => finishSheetDrag(event.clientY)}
+                  onPointerCancel={() => {
+                    sheetDragStartRef.current = null;
+                  }}
+                />
                 <div className="sheet-title">
                   <div>
                     <strong>{selectedFrame.name ?? 'Selected frame'}</strong>
@@ -233,12 +231,22 @@ export default function EditorPage() {
                   </div>
                 </div>
 
-                <div className="photo-strip">
+                <div
+                  className="photo-strip"
+                  onClick={(event) => event.stopPropagation()}
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onPointerUp={(event) => event.stopPropagation()}
+                >
                   {photos.map((photo) => (
                     <button
                       key={photo.id}
                       className={selectedPhotoId === photo.id ? 'photo-choice photo-choice-active' : 'photo-choice'}
-                      onClick={() => choosePhoto(photo)}
+                      onPointerDown={(event) => event.stopPropagation()}
+                      onPointerUp={(event) => event.stopPropagation()}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        choosePhoto(photo);
+                      }}
                       disabled={saving}
                     >
                       {photo.public_url && <img src={photo.public_url} alt={photo.file_name ?? 'Uploaded photo'} />}
@@ -265,13 +273,6 @@ export default function EditorPage() {
       </div>
     </AppShell>
   );
-}
-
-function assignmentsFromPhotos(photos: UploadedPhoto[]) {
-  return photos.reduce<FrameAssignments>((acc, photo) => {
-    if (photo.frame_id) acc[photo.frame_id] = photo;
-    return acc;
-  }, {});
 }
 
 function loadStoredAssignments(templateId: string, photos: UploadedPhoto[]) {

@@ -63,7 +63,8 @@ export async function fetchUploadedPhotos(templateId: string) {
     .order('created_at', { ascending: true });
 
   if (error) throw error;
-  return (data ?? []) as UploadedPhoto[];
+  const photos = (data ?? []).map((photo) => normalizeUploadedPhoto(photo as UploadedPhoto));
+  return filterExistingUploadedPhotos(photos, clientSessionId, templateId);
 }
 
 export async function uploadPhoto(file: File, templateId: string) {
@@ -101,7 +102,51 @@ export async function uploadPhoto(file: File, templateId: string) {
     .single();
 
   if (error) throw error;
-  return data as UploadedPhoto;
+  return normalizeUploadedPhoto(data as UploadedPhoto);
+}
+
+function normalizeUploadedPhoto(photo: UploadedPhoto): UploadedPhoto {
+  if (photo.public_url || !photo.bucket || !photo.storage_path) return photo;
+
+  const { data } = supabase.storage
+    .from(photo.bucket)
+    .getPublicUrl(photo.storage_path);
+
+  return {
+    ...photo,
+    public_url: data.publicUrl,
+  };
+}
+
+async function filterExistingUploadedPhotos(
+  photos: UploadedPhoto[],
+  clientSessionId: string,
+  templateId: string,
+) {
+  if (photos.length === 0) return photos;
+
+  const existingPaths = new Set<string>();
+  const buckets = Array.from(new Set(photos.map((photo) => photo.bucket)));
+  let checkedStorage = false;
+
+  await Promise.all(buckets.map(async (bucket) => {
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .list(`${clientSessionId}/${templateId}`, {
+        limit: 1000,
+        sortBy: { column: 'name', order: 'asc' },
+      });
+
+    if (error) return;
+    checkedStorage = true;
+
+    for (const item of data ?? []) {
+      existingPaths.add(`${clientSessionId}/${templateId}/${item.name}`);
+    }
+  }));
+
+  if (existingPaths.size === 0) return checkedStorage ? [] : photos;
+  return photos.filter((photo) => existingPaths.has(photo.storage_path));
 }
 
 function createUploadId() {
@@ -132,5 +177,5 @@ export async function assignPhotoToFrame(photo: UploadedPhoto, frameId: string, 
     .single();
 
   if (error) throw error;
-  return data as UploadedPhoto;
+  return normalizeUploadedPhoto(data as UploadedPhoto);
 }

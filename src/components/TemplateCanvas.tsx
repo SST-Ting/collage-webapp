@@ -338,19 +338,33 @@ function replaceSvgImageHrefs(
     const photoUrl = assignments[frame.id]?.public_url;
     if (!imageId || !photoUrl) return;
 
-    const imageElement = document.getElementById(imageId);
+    const imageElement = findSvgImageElement(document, imageId);
     if (!imageElement) return;
 
+    imageElement.removeAttribute('href');
+    imageElement.removeAttribute('xlink:href');
+    imageElement.removeAttributeNS('http://www.w3.org/1999/xlink', 'href');
     imageElement.setAttribute('href', photoUrl);
-    imageElement.setAttributeNS('http://www.w3.org/1999/xlink', 'href', photoUrl);
+    imageElement.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', photoUrl);
     imageElement.setAttribute('preserveAspectRatio', 'xMidYMid slice');
   });
 
-  return new XMLSerializer().serializeToString(document.documentElement);
+  const root = document.documentElement;
+  root.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+
+  return new XMLSerializer().serializeToString(root);
+}
+
+function findSvgImageElement(document: Document, imageId: string) {
+  const element = document.getElementById(imageId);
+  if (!element) return null;
+
+  if (element.tagName.toLowerCase().endsWith('image')) return element;
+  return element.querySelector('image');
 }
 
 function isSvgImageReplaceFrame(frame: TemplateFrame) {
-  return frame.config?.mode === 'svg_image_replace' && Boolean(getSvgImageId(frame));
+  return Boolean(getSvgImageId(frame));
 }
 
 function getSvgImageId(frame: TemplateFrame) {
