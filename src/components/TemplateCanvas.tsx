@@ -63,6 +63,7 @@ export function EditorCanvas({
       <div
         className="editor-canvas"
         onClick={onCanvasClick}
+        style={{ aspectRatio: `${template.base_width} / ${visibleHeight}` }}
       >
         <div
           className="editor-template-window"

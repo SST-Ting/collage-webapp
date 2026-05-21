@@ -1,21 +1,21 @@
 .editor-page {
   --editor-actions-gap: clamp(10px, 2svh, 18px);
-  --editor-actions-bottom: clamp(54px, 9svh, 82px);
   --editor-bottom-inset: max(env(safe-area-inset-bottom), var(--browser-bottom-inset, 0px));
   flex: 1;
   height: auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: 8px 14px calc(64px + var(--editor-actions-gap) + var(--editor-bottom-inset));
-  overflow: hidden;
+  gap: var(--editor-actions-gap);
+  padding: 8px 14px calc(14px + var(--editor-bottom-inset));
+  overflow-x: hidden;
+  overflow-y: auto;
   overscroll-behavior: none;
-  touch-action: pan-x;
+  touch-action: pan-y;
 }
 
 .editor-canvas-wrap {
-  flex: 1;
-  min-height: 0;
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -23,7 +23,7 @@
 
 .editor-canvas {
   width: 100%;
-  height: 100%;
+  height: auto;
   max-width: 100%;
   max-height: 100%;
   position: relative;
@@ -205,35 +205,38 @@
 }
 
 .editor-actions {
-  position: fixed;
-  left: max(14px, calc((100vw - 480px) / 2 + 14px));
-  right: max(14px, calc((100vw - 480px) / 2 + 14px));
-  bottom: calc(var(--editor-actions-bottom) + var(--editor-bottom-inset));
+  position: relative;
+  flex: 0 0 auto;
   z-index: 40;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px 8px;
   color: var(--sb-paper);
-  padding-top: var(--editor-actions-gap);
+  padding-bottom: max(0px, calc(var(--editor-bottom-inset) - 8px));
   transition: opacity 140ms ease;
 }
 
 .quick-chip {
-  min-height: 38px;
+  min-height: 34px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   border: 2px solid var(--sb-lava);
   border-radius: 999px;
   background: var(--sb-paper);
   color: var(--sb-lava);
-  padding: 8px 13px;
+  padding: 6px 11px;
   font-weight: 900;
-  font-size: 13px;
+  font-size: 12px;
   box-shadow: 0 2px 0 var(--sb-lava);
   cursor: pointer;
+}
+
+.quick-chip svg {
+  width: 15px;
+  height: 15px;
 }
 
 .quick-chip:disabled {
@@ -246,6 +249,8 @@
 }
 
 .save-indicator {
+  flex: 0 0 100%;
+  text-align: center;
   font-size: 12px;
   color: rgba(255, 253, 247, 0.72);
   font-weight: 800;
