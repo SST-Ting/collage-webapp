@@ -1,12 +1,13 @@
 .editor-page {
   --editor-actions-gap: clamp(10px, 2svh, 18px);
+  --editor-actions-bottom: clamp(54px, 9svh, 82px);
   --editor-bottom-inset: max(env(safe-area-inset-bottom), var(--browser-bottom-inset, 0px));
   flex: 1;
   height: auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: 8px 14px calc(86px + var(--editor-actions-gap) + var(--editor-bottom-inset));
+  padding: 8px 14px calc(64px + var(--editor-actions-gap) + var(--editor-bottom-inset));
   overflow: hidden;
   overscroll-behavior: none;
   touch-action: pan-x;
@@ -207,7 +208,7 @@
   position: fixed;
   left: max(14px, calc((100vw - 480px) / 2 + 14px));
   right: max(14px, calc((100vw - 480px) / 2 + 14px));
-  bottom: calc(18px + var(--editor-bottom-inset));
+  bottom: calc(var(--editor-actions-bottom) + var(--editor-bottom-inset));
   z-index: 40;
   display: flex;
   flex-wrap: wrap;
@@ -265,6 +266,12 @@
   box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.16);
   overflow: hidden;
   touch-action: none;
+  transition: transform 180ms ease;
+  will-change: transform;
+}
+
+.photo-picker-sheet-dragging {
+  transition: none;
 }
 
 .sheet-handle {
@@ -348,6 +355,7 @@
 }
 
 .photo-choice {
+  position: relative;
   flex: 0 0 104px;
   width: 104px;
   height: clamp(88px, 16svh, 118px);
@@ -357,6 +365,27 @@
   padding: 0;
   background: var(--sb-cream);
   cursor: pointer;
+}
+
+.photo-choice-clear {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  z-index: 6;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--sb-lava);
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: var(--sb-paper);
+  color: var(--sb-lava);
+  box-shadow: 0 2px 0 var(--sb-lava);
+  cursor: pointer;
+}
+
+.photo-choice-clear svg {
+  pointer-events: none;
 }
 
 .photo-choice-active {

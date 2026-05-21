@@ -1,4 +1,4 @@
-import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { ChangeEvent, PointerEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import Icon from '../components/Icon';
 import { AppShell, Button, ErrorCard, LoadingCard } from '../components/Layout';
@@ -10,10 +10,15 @@ export default function EditorPage() {
   const { templateId = '' } = useParams();
   const inputRef = useRef<HTMLInputElement>(null);
   const sheetDragStartRef = useRef<number | null>(null);
+  const sheetDragOffsetRef = useRef(0);
+  const sheetDragPointerRef = useRef<number | null>(null);
+  const ignoreNextPhotoClickRef = useRef(false);
   const [template, setTemplate] = useState<Template | null>(null);
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
   const [selectedFrame, setSelectedFrame] = useState<TemplateFrame | null>(null);
   const [assignments, setAssignments] = useState<FrameAssignments>({});
+  const [sheetDragOffset, setSheetDragOffset] = useState(0);
+  const [isSheetDragging, setIsSheetDragging] = useState(false);
   const [downloadSvg, setDownloadSvg] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -46,6 +51,16 @@ export default function EditorPage() {
       alive = false;
     };
   }, [templateId]);
+
+  useEffect(() => {
+    if (selectedFrame) return;
+
+    sheetDragStartRef.current = null;
+    sheetDragOffsetRef.current = 0;
+    sheetDragPointerRef.current = null;
+    setSheetDragOffset(0);
+    setIsSheetDragging(false);
+  }, [selectedFrame]);
 
   const selectedPhotoId = selectedFrame ? assignments[selectedFrame.id]?.id : undefined;
 
@@ -89,6 +104,13 @@ export default function EditorPage() {
     window.setTimeout(() => setSaving(false), 120);
   }
 
+  function clearFramePhoto(frameId: string) {
+    const nextAssignments = { ...assignments };
+    delete nextAssignments[frameId];
+    setAssignments(nextAssignments);
+    persistAssignments(templateId, nextAssignments);
+  }
+
   function randomFill() {
     if (!template || photos.length === 0) return;
     const shuffled = [...photos].sort(() => Math.random() - 0.5);
@@ -104,18 +126,64 @@ export default function EditorPage() {
     setSelectedFrame((current) => (current?.id === frame.id ? null : frame));
   }
 
-  function startSheetDrag(clientY: number) {
-    sheetDragStartRef.current = clientY;
+  function startSheetDrag(event: PointerEvent<HTMLElement>) {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+
+    sheetDragStartRef.current = event.clientY;
+    sheetDragOffsetRef.current = 0;
+    sheetDragPointerRef.current = event.pointerId;
+    ignoreNextPhotoClickRef.current = false;
+    setIsSheetDragging(false);
+    event.currentTarget.setPointerCapture(event.pointerId);
   }
 
-  function finishSheetDrag(clientY: number) {
+  function moveSheetDrag(event: PointerEvent<HTMLElement>) {
+    if (sheetDragPointerRef.current !== event.pointerId) return;
+
     const startY = sheetDragStartRef.current;
-    sheetDragStartRef.current = null;
     if (startY === null) return;
 
-    if (clientY - startY > 48) {
-      setSelectedFrame(null);
+    const offset = Math.max(0, event.clientY - startY);
+    sheetDragOffsetRef.current = offset;
+    setSheetDragOffset(offset);
+
+    if (offset > 6) {
+      ignoreNextPhotoClickRef.current = true;
+      setIsSheetDragging(true);
     }
+  }
+
+  function finishSheetDrag(event: PointerEvent<HTMLElement>) {
+    if (sheetDragPointerRef.current !== event.pointerId) return;
+
+    const offset = sheetDragOffsetRef.current;
+    sheetDragStartRef.current = null;
+    sheetDragOffsetRef.current = 0;
+    sheetDragPointerRef.current = null;
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    setIsSheetDragging(false);
+
+    if (offset > 72) {
+      setSheetDragOffset(0);
+      setSelectedFrame(null);
+      return;
+    }
+
+    setSheetDragOffset(0);
+  }
+
+  function cancelSheetDrag(event: PointerEvent<HTMLElement>) {
+    if (sheetDragPointerRef.current !== event.pointerId) return;
+
+    sheetDragStartRef.current = null;
+    sheetDragOffsetRef.current = 0;
+    sheetDragPointerRef.current = null;
+    setSheetDragOffset(0);
+    setIsSheetDragging(false);
   }
 
   async function downloadCollage() {
@@ -183,15 +251,15 @@ export default function EditorPage() {
             </div>
 
             {selectedFrame && (
-              <section className="photo-picker-sheet">
-                <div
-                  className="sheet-handle"
-                  onPointerDown={(event) => startSheetDrag(event.clientY)}
-                  onPointerUp={(event) => finishSheetDrag(event.clientY)}
-                  onPointerCancel={() => {
-                    sheetDragStartRef.current = null;
-                  }}
-                />
+              <section
+                className={isSheetDragging ? 'photo-picker-sheet photo-picker-sheet-dragging' : 'photo-picker-sheet'}
+                style={{ transform: `translateY(${sheetDragOffset}px)` }}
+                onPointerDown={startSheetDrag}
+                onPointerMove={moveSheetDrag}
+                onPointerUp={finishSheetDrag}
+                onPointerCancel={cancelSheetDrag}
+              >
+                <div className="sheet-handle" />
                 <div className="sheet-title">
                   <div>
                     <strong>{selectedFrame.name ?? 'Selected frame'}</strong>
@@ -234,22 +302,44 @@ export default function EditorPage() {
                 <div
                   className="photo-strip"
                   onClick={(event) => event.stopPropagation()}
-                  onPointerDown={(event) => event.stopPropagation()}
-                  onPointerUp={(event) => event.stopPropagation()}
                 >
                   {photos.map((photo) => (
                     <button
                       key={photo.id}
                       className={selectedPhotoId === photo.id ? 'photo-choice photo-choice-active' : 'photo-choice'}
-                      onPointerDown={(event) => event.stopPropagation()}
-                      onPointerUp={(event) => event.stopPropagation()}
                       onClick={(event) => {
                         event.stopPropagation();
+                        if (ignoreNextPhotoClickRef.current) {
+                          ignoreNextPhotoClickRef.current = false;
+                          return;
+                        }
                         choosePhoto(photo);
                       }}
                       disabled={saving}
                     >
                       {photo.public_url && <img src={photo.public_url} alt={photo.file_name ?? 'Uploaded photo'} />}
+                      {selectedPhotoId === photo.id && selectedFrame && (
+                        <span
+                          className="photo-choice-clear"
+                          role="button"
+                          tabIndex={0}
+                          aria-label="Remove photo from selected frame"
+                          title="Remove photo from selected frame"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            clearFramePhoto(selectedFrame.id);
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              clearFramePhoto(selectedFrame.id);
+                            }
+                          }}
+                        >
+                          <Icon name="x" size={14} strokeWidth={3} />
+                        </span>
+                      )}
                     </button>
                   ))}
                   {photos.length === 0 && (
