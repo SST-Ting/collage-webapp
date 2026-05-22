@@ -1,4 +1,4 @@
-import { ChangeEvent, PointerEvent, useEffect, useMemo, useRef, useState } from 'react';
+﻿import { ChangeEvent, PointerEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import Icon from '../components/Icon';
 import { AppShell, Button, ErrorCard, LoadingCard } from '../components/Layout';
@@ -301,6 +301,10 @@ export default function EditorPage() {
 
                 <div
                   className="photo-strip"
+                  onPointerDown={(event) => {
+                    ignoreNextPhotoClickRef.current = false;
+                    event.stopPropagation();
+                  }}
                   onClick={(event) => event.stopPropagation()}
                 >
                   {photos.map((photo) => (
@@ -539,3 +543,6 @@ function downloadBlob(blob: Blob, fileName: string) {
   link.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 500);
 }
+
+
+
