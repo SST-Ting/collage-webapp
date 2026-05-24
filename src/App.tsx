@@ -52,14 +52,14 @@ function useMobileViewportVars() {
     lockViewportHeight();
     updateBottomInset();
 
-    window.addEventListener('resize', updateBottomInset);
+    window.addEventListener('resize', resetViewportVars);
     window.addEventListener('orientationchange', resetViewportVars);
-    window.visualViewport?.addEventListener('resize', updateBottomInset);
+    window.visualViewport?.addEventListener('resize', resetViewportVars);
 
     return () => {
-      window.removeEventListener('resize', updateBottomInset);
+      window.removeEventListener('resize', resetViewportVars);
       window.removeEventListener('orientationchange', resetViewportVars);
-      window.visualViewport?.removeEventListener('resize', updateBottomInset);
+      window.visualViewport?.removeEventListener('resize', resetViewportVars);
     };
   }, []);
 }

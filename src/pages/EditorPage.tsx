@@ -351,6 +351,7 @@ export default function EditorPage() {
     setSelectedFrame(null);
     setSelectedPhotoIds(new Set());
     setHorizontalMode(nextHorizontalMode);
+    syncViewportAfterLayoutChange();
 
     try {
       const orientation = screen.orientation as ScreenOrientation & {
@@ -371,6 +372,9 @@ export default function EditorPage() {
       }
     } catch {
       // Some mobile browsers, especially iOS Safari, do not allow orientation lock.
+    } finally {
+      syncViewportAfterLayoutChange();
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
     }
   }
 
@@ -653,6 +657,18 @@ function persistAssignments(templateId: string, assignments: FrameAssignments) {
   }, {});
 
   window.localStorage.setItem(assignmentStorageKey(templateId), JSON.stringify(serializable));
+}
+
+function syncViewportAfterLayoutChange() {
+  const update = () => {
+    const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+    document.documentElement.style.setProperty('--app-viewport-height', `${viewportHeight}px`);
+  };
+
+  update();
+  window.requestAnimationFrame(update);
+  window.setTimeout(update, 180);
+  window.setTimeout(update, 420);
 }
 
 function assignmentStorageKey(templateId: string) {
