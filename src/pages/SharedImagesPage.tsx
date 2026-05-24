@@ -63,8 +63,19 @@ export default function SharedImagesPage() {
                         <img src={image.public_url} alt={image.file_name ?? 'Shared collage'} />
                       </button>
                     )}
-                    <div className="shared-image-bar">
-                      <span>{formatSharedDate(image.created_at)}</span>
+                    <div className="shared-image-favorite">
+                      {image.public_url && (
+                        <a
+                          className="shared-download-button"
+                          href={image.public_url}
+                          download={image.file_name ?? 'shared-collage.png'}
+                          onClick={(event) => event.stopPropagation()}
+                          aria-label="Download shared image"
+                          title="Download"
+                        >
+                          <Icon name="download" size={14} strokeWidth={2.5} />
+                        </a>
+                      )}
                       <button
                         type="button"
                         className={isFavorited ? 'favorite-button favorite-button-active' : 'favorite-button'}
@@ -91,16 +102,27 @@ export default function SharedImagesPage() {
             {viewerImage?.public_url && (
               <div className="shared-viewer" role="dialog" aria-modal="true" aria-label="Shared image preview">
                 <div className="shared-viewer-bar">
-                  <span>{formatSharedDate(viewerImage.created_at)}</span>
-                  <button
-                    type="button"
-                    className="shared-viewer-close"
-                    onClick={() => setViewerImage(null)}
-                    aria-label="Close image preview"
-                    title="Close"
-                  >
-                    <Icon name="x" size={18} />
-                  </button>
+                  <span>Preview</span>
+                  <div className="shared-viewer-actions">
+                    <a
+                      className="shared-viewer-action"
+                      href={viewerImage.public_url}
+                      download={viewerImage.file_name ?? 'shared-collage.png'}
+                      aria-label="Download shared image"
+                      title="Download"
+                    >
+                      <Icon name="download" size={18} />
+                    </a>
+                    <button
+                      type="button"
+                      className="shared-viewer-action"
+                      onClick={() => setViewerImage(null)}
+                      aria-label="Close image preview"
+                      title="Close"
+                    >
+                      <Icon name="x" size={18} />
+                    </button>
+                  </div>
                 </div>
                 <div className="shared-viewer-canvas" onClick={() => setViewerImage(null)}>
                   <img

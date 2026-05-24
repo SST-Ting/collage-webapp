@@ -4,6 +4,7 @@ import Icon from '../components/Icon';
 import { AppShell, Button, ErrorCard, LoadingCard } from '../components/Layout';
 import { EditorCanvas } from '../components/TemplateCanvas';
 import { deleteUploadedPhotos, fetchTemplate, fetchUploadedPhotos, uploadPhoto, uploadSharedImage } from '../lib/api';
+import { forgetLocalPhotoPreview, rememberLocalPhotoPreview } from '../lib/localPhotoPreviewCache';
 import type { FrameAssignments, Template, TemplateFrame, UploadedPhoto } from '../types';
 
 export default function EditorPage() {
@@ -104,10 +105,27 @@ export default function EditorPage() {
   }, [selectedFrame]);
 
   const selectedPhotoId = selectedFrame ? assignments[selectedFrame.id]?.id : undefined;
+  const activeFramePhoto = selectedFrame ? assignments[selectedFrame.id] : undefined;
   const selectedPhotos = useMemo(
     () => photos.filter((photo) => selectedPhotoIds.has(photo.id)),
     [photos, selectedPhotoIds],
   );
+  const deleteTargetPhotos = selectedPhotos.length > 0
+    ? selectedPhotos
+    : activeFramePhoto
+      ? [activeFramePhoto]
+      : [];
+  const pickerPhotos = useMemo(() => {
+    if (!selectedPhotoId) return photos;
+
+    const activePhoto = photos.find((photo) => photo.id === selectedPhotoId);
+    if (!activePhoto) return photos;
+
+    return [
+      activePhoto,
+      ...photos.filter((photo) => photo.id !== selectedPhotoId),
+    ];
+  }, [photos, selectedPhotoId]);
 
   const filledCount = useMemo(
     () => Object.values(assignments).filter(Boolean).length,
@@ -153,7 +171,9 @@ export default function EditorPage() {
     localPhotos.forEach((photo) => {
       if (photo.local_preview_url) localPreviewUrlsRef.current.add(photo.local_preview_url);
     });
-    setPhotos((current) => [...current, ...localPhotos]);
+    setPhotos((current) => [...localPhotos, ...current]);
+    setSelectedFrame((current) => current ?? template?.template_frames?.[0] ?? null);
+    resetSheetDragState();
 
     const results = await Promise.all(localPhotos.map(async (localPhoto, index) => {
       try {
@@ -181,6 +201,9 @@ export default function EditorPage() {
       local_preview_url: localPhoto.local_preview_url,
       upload_status: 'ready',
     };
+    if (localPhoto.local_preview_url) {
+      rememberLocalPhotoPreview(readyPhoto, localPhoto.local_preview_url);
+    }
 
     setPhotos((current) => current.map((photo) => (photo.id === localPhoto.id ? readyPhoto : photo)));
     setSelectedPhotoIds((current) => {
@@ -277,22 +300,23 @@ export default function EditorPage() {
   }
 
   async function deleteSelectedPhotos() {
-    if (selectedPhotos.length === 0) return;
+    if (deleteTargetPhotos.length === 0) return;
 
     setDeletingPhotos(true);
     setError(null);
     try {
-      const remotePhotos = selectedPhotos.filter((photo) => photo.bucket && photo.storage_path);
+      const remotePhotos = deleteTargetPhotos.filter((photo) => photo.bucket && photo.storage_path);
       if (remotePhotos.length > 0) {
         await deleteUploadedPhotos(remotePhotos);
       }
-      const deletedIds = new Set(selectedPhotos.map((photo) => photo.id));
+      const deletedIds = new Set(deleteTargetPhotos.map((photo) => photo.id));
       const nextAssignments = Object.entries(assignments).reduce<FrameAssignments>((acc, [frameId, photo]) => {
         if (photo && !deletedIds.has(photo.id)) acc[frameId] = photo;
         return acc;
       }, {});
 
-      selectedPhotos.forEach((photo) => {
+      deleteTargetPhotos.forEach((photo) => {
+        forgetLocalPhotoPreview(photo);
         if (!photo.local_preview_url) return;
         URL.revokeObjectURL(photo.local_preview_url);
         localPreviewUrlsRef.current.delete(photo.local_preview_url);
@@ -594,9 +618,9 @@ export default function EditorPage() {
                       type="button"
                       className="sheet-icon-button sheet-icon-button-danger"
                       onClick={deleteSelectedPhotos}
-                      disabled={selectedPhotos.length === 0 || deletingPhotos}
+                      disabled={deleteTargetPhotos.length === 0 || deletingPhotos}
                       aria-label="Delete selected photos"
-                      title={selectedPhotos.length === 0 ? 'Select photos first' : 'Delete selected photos'}
+                      title={deleteTargetPhotos.length === 0 ? 'Select a photo first' : 'Delete photo'}
                     >
                       <Icon name="trash" size={17} />
                     </button>
@@ -611,7 +635,7 @@ export default function EditorPage() {
                   }}
                   onClick={(event) => event.stopPropagation()}
                 >
-                  {photos.map((photo) => {
+                  {pickerPhotos.map((photo) => {
                     const isAssignedToCurrentFrame = selectedPhotoId === photo.id;
                     const selectedIndex = selectedPhotos.findIndex((selectedPhoto) => selectedPhoto.id === photo.id);
                     const isSelectedForAction = selectedIndex >= 0;

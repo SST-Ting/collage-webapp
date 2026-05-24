@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import { getClientSessionId } from './session';
 import { sanitizeFileName } from './image';
+import { applyLocalPhotoPreview } from './localPhotoPreviewCache';
 import type { SharedImage, Template, TemplateFrame, UploadedPhoto } from '../types';
 
 const USER_PHOTOS_BUCKET = 'user-photos';
@@ -60,12 +61,12 @@ export async function fetchUploadedPhotos(templateId: string) {
     .from('uploaded_photos')
     .select('*')
     .eq('client_session_id', clientSessionId)
-    .eq('template_id', templateId)
-    .order('created_at', { ascending: true });
+    .order('created_at', { ascending: false });
 
   if (error) throw error;
-  const photos = (data ?? []).map((photo) => normalizeUploadedPhoto(photo as UploadedPhoto));
-  return filterExistingUploadedPhotos(photos, clientSessionId, templateId);
+  return (data ?? [])
+    .map((photo) => normalizeUploadedPhoto(photo as UploadedPhoto))
+    .map(applyLocalPhotoPreview);
 }
 
 export async function uploadPhoto(file: File, templateId: string) {
@@ -145,8 +146,6 @@ function normalizeUploadedPhoto(photo: UploadedPhoto): UploadedPhoto {
 
 async function filterExistingUploadedPhotos(
   photos: UploadedPhoto[],
-  clientSessionId: string,
-  templateId: string,
 ) {
   if (photos.length === 0) return photos;
 
@@ -157,7 +156,7 @@ async function filterExistingUploadedPhotos(
   await Promise.all(buckets.map(async (bucket) => {
     const { data, error } = await supabase.storage
       .from(bucket)
-      .list(`${clientSessionId}/${templateId}`, {
+      .list(undefined, {
         limit: 1000,
         sortBy: { column: 'name', order: 'asc' },
       });
@@ -166,12 +165,15 @@ async function filterExistingUploadedPhotos(
     checkedStorage = true;
 
     for (const item of data ?? []) {
-      existingPaths.add(`${clientSessionId}/${templateId}/${item.name}`);
+      if (item.name) existingPaths.add(item.name);
     }
   }));
 
   if (existingPaths.size === 0) return checkedStorage ? [] : photos;
-  return photos.filter((photo) => existingPaths.has(photo.storage_path));
+  return photos.filter((photo) => {
+    if (existingPaths.has(photo.storage_path)) return true;
+    return photo.storage_path.split('/').every(Boolean);
+  });
 }
 
 function createUploadId() {
