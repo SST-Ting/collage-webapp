@@ -115,6 +115,10 @@ img {
   align-items: center;
 }
 
+.app-bar-side-right {
+  justify-content: flex-end;
+}
+
 .icon-button {
   width: 42px;
   height: 42px;

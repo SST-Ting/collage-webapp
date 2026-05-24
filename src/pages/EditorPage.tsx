@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import Icon from '../components/Icon';
 import { AppShell, Button, ErrorCard, LoadingCard } from '../components/Layout';
 import { EditorCanvas } from '../components/TemplateCanvas';
-import { fetchTemplate, fetchUploadedPhotos, uploadPhoto } from '../lib/api';
+import { deleteUploadedPhotos, fetchTemplate, fetchUploadedPhotos, uploadPhoto } from '../lib/api';
 import type { FrameAssignments, Template, TemplateFrame, UploadedPhoto } from '../types';
 
 export default function EditorPage() {
@@ -13,9 +13,12 @@ export default function EditorPage() {
   const sheetDragOffsetRef = useRef(0);
   const sheetDragPointerRef = useRef<number | null>(null);
   const ignoreNextPhotoClickRef = useRef(false);
+  const photoLongPressTimerRef = useRef<number | null>(null);
+  const photoPointerStartRef = useRef<{ id: string; x: number; y: number } | null>(null);
   const [template, setTemplate] = useState<Template | null>(null);
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
   const [selectedFrame, setSelectedFrame] = useState<TemplateFrame | null>(null);
+  const [selectedPhotoIds, setSelectedPhotoIds] = useState<Set<string>>(() => new Set());
   const [assignments, setAssignments] = useState<FrameAssignments>({});
   const [sheetDragOffset, setSheetDragOffset] = useState(0);
   const [isSheetDragging, setIsSheetDragging] = useState(false);
@@ -23,7 +26,9 @@ export default function EditorPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [deletingPhotos, setDeletingPhotos] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -60,7 +65,10 @@ export default function EditorPage() {
     sheetDragPointerRef.current = null;
     setSheetDragOffset(0);
     setIsSheetDragging(false);
+    setSelectedPhotoIds(new Set());
   }, [selectedFrame]);
+
+  useEffect(() => () => clearPhotoLongPressTimer(), []);
 
   useEffect(() => {
     if (!selectedFrame) return undefined;
@@ -87,6 +95,10 @@ export default function EditorPage() {
   }, [selectedFrame]);
 
   const selectedPhotoId = selectedFrame ? assignments[selectedFrame.id]?.id : undefined;
+  const selectedPhotos = useMemo(
+    () => photos.filter((photo) => selectedPhotoIds.has(photo.id)),
+    [photos, selectedPhotoIds],
+  );
 
   const filledCount = useMemo(
     () => Object.values(assignments).filter(Boolean).length,
@@ -103,6 +115,12 @@ export default function EditorPage() {
     ignoreNextPhotoClickRef.current = false;
     setSheetDragOffset(0);
     setIsSheetDragging(false);
+  }
+
+  function clearPhotoLongPressTimer() {
+    if (photoLongPressTimerRef.current === null) return;
+    window.clearTimeout(photoLongPressTimerRef.current);
+    photoLongPressTimerRef.current = null;
   }
 
   async function handleFiles(event: ChangeEvent<HTMLInputElement>) {
@@ -147,15 +165,82 @@ export default function EditorPage() {
     persistAssignments(templateId, nextAssignments);
   }
 
-  function randomFill() {
-    if (!template || photos.length === 0) return;
-    const shuffled = [...photos].sort(() => Math.random() - 0.5);
+  function randomFill(sourcePhotos = photos) {
+    if (!template || sourcePhotos.length === 0) return;
+    const shuffled = [...sourcePhotos].sort(() => Math.random() - 0.5);
     const next: FrameAssignments = {};
     for (const [index, frame] of (template.template_frames ?? []).entries()) {
       next[frame.id] = shuffled[index % shuffled.length];
     }
     setAssignments(next);
     persistAssignments(templateId, next);
+  }
+
+  function randomFillSelectedPhotos() {
+    randomFill(selectedPhotos);
+  }
+
+  function togglePhotoSelection(photoId: string) {
+    setSelectedPhotoIds((current) => {
+      const next = new Set(current);
+      if (next.has(photoId)) next.delete(photoId);
+      else next.add(photoId);
+      return next;
+    });
+  }
+
+  function startPhotoLongPress(photo: UploadedPhoto, event: PointerEvent<HTMLButtonElement>) {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+
+    clearPhotoLongPressTimer();
+    photoPointerStartRef.current = {
+      id: photo.id,
+      x: event.clientX,
+      y: event.clientY,
+    };
+
+    photoLongPressTimerRef.current = window.setTimeout(() => {
+      ignoreNextPhotoClickRef.current = true;
+      photoLongPressTimerRef.current = null;
+      togglePhotoSelection(photo.id);
+    }, 420);
+  }
+
+  function movePhotoLongPress(event: PointerEvent<HTMLButtonElement>) {
+    const start = photoPointerStartRef.current;
+    if (!start) return;
+
+    const moved = Math.hypot(event.clientX - start.x, event.clientY - start.y);
+    if (moved > 8) clearPhotoLongPressTimer();
+  }
+
+  function stopPhotoLongPress() {
+    clearPhotoLongPressTimer();
+    photoPointerStartRef.current = null;
+  }
+
+  async function deleteSelectedPhotos() {
+    if (selectedPhotos.length === 0) return;
+
+    setDeletingPhotos(true);
+    setError(null);
+    try {
+      await deleteUploadedPhotos(selectedPhotos);
+      const deletedIds = new Set(selectedPhotos.map((photo) => photo.id));
+      const nextAssignments = Object.entries(assignments).reduce<FrameAssignments>((acc, [frameId, photo]) => {
+        if (photo && !deletedIds.has(photo.id)) acc[frameId] = photo;
+        return acc;
+      }, {});
+
+      setPhotos((current) => current.filter((photo) => !deletedIds.has(photo.id)));
+      setAssignments(nextAssignments);
+      persistAssignments(templateId, nextAssignments);
+      setSelectedPhotoIds(new Set());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Delete failed');
+    } finally {
+      setDeletingPhotos(false);
+    }
   }
 
   function selectFrame(frame: TemplateFrame) {
@@ -244,8 +329,33 @@ export default function EditorPage() {
     }
   }
 
+  function openPreview() {
+    if (!downloadSvg) {
+      setError('The collage is still loading. Please try again in a moment.');
+      return;
+    }
+
+    setPreviewOpen(true);
+  }
+
   return (
-    <AppShell title="Photo Editor" backTo="/templates" dark>
+    <AppShell
+      title="Photo Editor"
+      backTo="/templates"
+      dark
+      rightAction={(
+        <button
+          type="button"
+          className="icon-button"
+          onClick={openPreview}
+          disabled={!downloadSvg}
+          aria-label="Preview collage"
+          title="Preview collage"
+        >
+          <Icon name="image" size={20} />
+        </button>
+      )}
+    >
       <div className={selectedFrame ? 'editor-page editor-page-sheet-open' : 'editor-page editor-page-sheet-closed'}>
         {loading && <LoadingCard message="Loading editor..." />}
         {error && <ErrorCard message={error} />}
@@ -271,7 +381,7 @@ export default function EditorPage() {
             />
 
             <div className="editor-actions">
-              <button className="quick-chip quick-chip-sun" onClick={randomFill} disabled={photos.length === 0}>
+              <button className="quick-chip quick-chip-sun" onClick={() => randomFill()} disabled={photos.length === 0}>
                 <Icon name="shuffle" size={16} />
                 Random
               </button>
@@ -297,17 +407,16 @@ export default function EditorPage() {
                 <div className="sheet-handle" />
                 <div className="sheet-title">
                   <div>
-                    <strong>{selectedFrame.name ?? 'Selected frame'}</strong>
-                    <span>Tap a photo to fill this frame</span>
+                    <strong>{formatFrameLabel(selectedFrame)}</strong>
                   </div>
                   <div className="sheet-actions" onPointerDown={(event) => event.stopPropagation()}>
                     <button
                       type="button"
                       className="sheet-icon-button sheet-icon-button-sun"
-                      onClick={randomFill}
-                      disabled={photos.length === 0}
-                      aria-label="Random fill"
-                      title="Random fill"
+                      onClick={randomFillSelectedPhotos}
+                      disabled={selectedPhotos.length === 0}
+                      aria-label="Random fill selected photos"
+                      title={selectedPhotos.length === 0 ? 'Select photos first' : 'Random fill selected photos'}
                     >
                       <Icon name="shuffle" size={17} />
                     </button>
@@ -331,6 +440,16 @@ export default function EditorPage() {
                     >
                       <Icon name="download" size={17} />
                     </button>
+                    <button
+                      type="button"
+                      className="sheet-icon-button sheet-icon-button-danger"
+                      onClick={deleteSelectedPhotos}
+                      disabled={selectedPhotos.length === 0 || deletingPhotos}
+                      aria-label="Delete selected photos"
+                      title={selectedPhotos.length === 0 ? 'Select photos first' : 'Delete selected photos'}
+                    >
+                      <Icon name="trash" size={17} />
+                    </button>
                   </div>
                 </div>
 
@@ -342,45 +461,68 @@ export default function EditorPage() {
                   }}
                   onClick={(event) => event.stopPropagation()}
                 >
-                  {photos.map((photo) => (
-                    <button
-                      key={photo.id}
-                      className={selectedPhotoId === photo.id ? 'photo-choice photo-choice-active' : 'photo-choice'}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        if (ignoreNextPhotoClickRef.current) {
-                          ignoreNextPhotoClickRef.current = false;
-                          return;
-                        }
-                        choosePhoto(photo);
-                      }}
-                      disabled={saving}
-                    >
-                      {photo.public_url && <img src={photo.public_url} alt={photo.file_name ?? 'Uploaded photo'} />}
-                      {selectedPhotoId === photo.id && selectedFrame && (
-                        <span
-                          className="photo-choice-clear"
-                          role="button"
-                          tabIndex={0}
-                          aria-label="Remove photo from selected frame"
-                          title="Remove photo from selected frame"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            clearFramePhoto(selectedFrame.id);
-                          }}
-                          onKeyDown={(event) => {
-                            if (event.key === 'Enter' || event.key === ' ') {
-                              event.preventDefault();
+                  {photos.map((photo) => {
+                    const isAssignedToCurrentFrame = selectedPhotoId === photo.id;
+                    const selectedIndex = selectedPhotos.findIndex((selectedPhoto) => selectedPhoto.id === photo.id);
+                    const isSelectedForAction = selectedIndex >= 0;
+
+                    return (
+                      <button
+                        key={photo.id}
+                        className={[
+                          'photo-choice',
+                          isAssignedToCurrentFrame ? 'photo-choice-active' : '',
+                          isSelectedForAction ? 'photo-choice-selected' : '',
+                        ].filter(Boolean).join(' ')}
+                        onPointerDown={(event) => startPhotoLongPress(photo, event)}
+                        onPointerMove={movePhotoLongPress}
+                        onPointerUp={stopPhotoLongPress}
+                        onPointerCancel={stopPhotoLongPress}
+                        onPointerLeave={stopPhotoLongPress}
+                        onContextMenu={(event) => event.preventDefault()}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          if (ignoreNextPhotoClickRef.current) {
+                            ignoreNextPhotoClickRef.current = false;
+                            return;
+                          }
+                          if (selectedPhotoIds.size > 0) {
+                            togglePhotoSelection(photo.id);
+                            return;
+                          }
+                          choosePhoto(photo);
+                        }}
+                        disabled={saving || deletingPhotos}
+                      >
+                        {photo.public_url && <img src={photo.public_url} alt={photo.file_name ?? 'Uploaded photo'} />}
+                        {isSelectedForAction && (
+                          <span className="photo-choice-select-badge">{selectedIndex + 1}</span>
+                        )}
+                        {isAssignedToCurrentFrame && selectedFrame && (
+                          <span
+                            className="photo-choice-clear"
+                            role="button"
+                            tabIndex={0}
+                            aria-label="Remove photo from selected frame"
+                            title="Remove photo from selected frame"
+                            onClick={(event) => {
                               event.stopPropagation();
                               clearFramePhoto(selectedFrame.id);
-                            }
-                          }}
-                        >
-                          <Icon name="x" size={14} strokeWidth={3} />
-                        </span>
-                      )}
-                    </button>
-                  ))}
+                            }}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                clearFramePhoto(selectedFrame.id);
+                              }
+                            }}
+                          >
+                            <Icon name="x" size={14} strokeWidth={3} />
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
                   {photos.length === 0 && (
                     <div className="empty-strip">
                       <p>No photos yet.</p>
@@ -396,6 +538,41 @@ export default function EditorPage() {
                   )}
                 </div>
               </section>
+            )}
+
+            {previewOpen && downloadSvg && (
+              <div className="preview-modal" role="dialog" aria-modal="true" aria-label="Preview collage">
+                <div className="preview-modal-panel">
+                  <div className="preview-modal-bar">
+                    <strong>Preview</strong>
+                    <div className="preview-modal-actions">
+                      <button
+                        type="button"
+                        className="sheet-icon-button"
+                        onClick={downloadCollage}
+                        disabled={downloading}
+                        aria-label="Download PNG"
+                        title="Download PNG"
+                      >
+                        <Icon name="download" size={17} />
+                      </button>
+                      <button
+                        type="button"
+                        className="sheet-icon-button"
+                        onClick={() => setPreviewOpen(false)}
+                        aria-label="Close preview"
+                        title="Close preview"
+                      >
+                        <Icon name="x" size={17} />
+                      </button>
+                    </div>
+                  </div>
+                  <div
+                    className="preview-modal-canvas"
+                    dangerouslySetInnerHTML={{ __html: downloadSvg }}
+                  />
+                </div>
+              </div>
             )}
           </>
         )}
@@ -432,6 +609,11 @@ function persistAssignments(templateId: string, assignments: FrameAssignments) {
 
 function assignmentStorageKey(templateId: string) {
   return `event-collage-assignments:${templateId}`;
+}
+
+function formatFrameLabel(frame: TemplateFrame) {
+  const label = frame.name?.trim() || frame.frame_key || 'Selected frame';
+  return /^#/.test(label) ? label : `#${label}`;
 }
 
 function safeFileName(value: string) {
@@ -578,6 +760,4 @@ function downloadBlob(blob: Blob, fileName: string) {
   link.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 500);
 }
-
-
 

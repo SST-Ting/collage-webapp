@@ -105,6 +105,30 @@ export async function uploadPhoto(file: File, templateId: string) {
   return normalizeUploadedPhoto(data as UploadedPhoto);
 }
 
+export async function deleteUploadedPhotos(photos: UploadedPhoto[]) {
+  if (photos.length === 0) return;
+
+  const buckets = Array.from(new Set(photos.map((photo) => photo.bucket)));
+  await Promise.all(buckets.map(async (bucket) => {
+    const paths = photos
+      .filter((photo) => photo.bucket === bucket)
+      .map((photo) => photo.storage_path)
+      .filter(Boolean);
+
+    if (paths.length === 0) return;
+
+    const { error } = await supabase.storage.from(bucket).remove(paths);
+    if (error) throw error;
+  }));
+
+  const { error } = await supabase
+    .from('uploaded_photos')
+    .delete()
+    .in('id', photos.map((photo) => photo.id));
+
+  if (error) throw error;
+}
+
 function normalizeUploadedPhoto(photo: UploadedPhoto): UploadedPhoto {
   if (photo.public_url || !photo.bucket || !photo.storage_path) return photo;
 

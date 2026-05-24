@@ -6,10 +6,11 @@ type AppShellProps = {
   title?: string;
   backTo?: string;
   dark?: boolean;
+  rightAction?: React.ReactNode;
   children: React.ReactNode;
 };
 
-export function AppShell({ title, backTo, dark, children }: AppShellProps) {
+export function AppShell({ title, backTo, dark, rightAction, children }: AppShellProps) {
   return (
     <main className={dark ? 'app-shell app-shell-dark' : 'app-shell'}>
       {(title || backTo) && (
@@ -22,7 +23,7 @@ export function AppShell({ title, backTo, dark, children }: AppShellProps) {
             )}
           </div>
           <div className="app-bar-title">{title}</div>
-          <div className="app-bar-side" />
+          <div className="app-bar-side app-bar-side-right">{rightAction}</div>
         </header>
       )}
       {children}
