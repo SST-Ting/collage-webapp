@@ -194,8 +194,8 @@ img {
 }
 
 .app-bar-dark .icon-button {
-  background: rgba(255, 253, 247, 0.12);
-  color: var(--sb-paper);
+  background: #FEFBF4;
+  color: var(--sb-lava);
 }
 
 .app-bar-dark .icon-button-active {

@@ -682,6 +682,26 @@
   box-shadow: 0 2px 0 var(--sb-ocean-deep), 0 0 0 3px rgba(14, 165, 183, 0.16);
 }
 
+.photo-choice-status {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  z-index: 4;
+  max-width: calc(100% - 12px);
+  border-radius: 999px;
+  background: rgba(42, 31, 26, 0.82);
+  color: var(--sb-paper);
+  padding: 3px 7px;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.photo-choice-status-error {
+  background: rgba(216, 72, 59, 0.9);
+}
+
 .photo-choice-select-badge {
   position: absolute;
   right: 8px;

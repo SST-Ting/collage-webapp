@@ -15,6 +15,7 @@ export default function EditorPage() {
   const ignoreNextPhotoClickRef = useRef(false);
   const photoLongPressTimerRef = useRef<number | null>(null);
   const photoPointerStartRef = useRef<{ id: string; x: number; y: number } | null>(null);
+  const localPreviewUrlsRef = useRef<Set<string>>(new Set());
   const [template, setTemplate] = useState<Template | null>(null);
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
   const [selectedFrame, setSelectedFrame] = useState<TemplateFrame | null>(null);
@@ -70,7 +71,11 @@ export default function EditorPage() {
     setSelectedPhotoIds(new Set());
   }, [selectedFrame]);
 
-  useEffect(() => () => clearPhotoLongPressTimer(), []);
+  useEffect(() => () => {
+    clearPhotoLongPressTimer();
+    localPreviewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    localPreviewUrlsRef.current.clear();
+  }, []);
 
   useEffect(() => {
     if (!selectedFrame) return undefined;
@@ -106,6 +111,11 @@ export default function EditorPage() {
     () => Object.values(assignments).filter(Boolean).length,
     [assignments],
   );
+  const hasPendingAssignedUploads = useMemo(
+    () => Object.values(assignments).some((photo) => Boolean(photo && !photo.public_url)),
+    [assignments],
+  );
+  const canDownload = Boolean(downloadSvg && !hasPendingAssignedUploads);
   const progressLabel = template
     ? `${filledCount}/${template.template_frames?.length ?? 0} filled`
     : '';
@@ -135,18 +145,57 @@ export default function EditorPage() {
 
     setUploading(true);
     setError(null);
-    try {
-      const uploaded: UploadedPhoto[] = [];
-      for (const file of files) {
-        uploaded.push(await uploadPhoto(file, templateId));
+    event.target.value = '';
+
+    const localPhotos = files.map((file) => createLocalPreviewPhoto(file, templateId));
+    localPhotos.forEach((photo) => {
+      if (photo.local_preview_url) localPreviewUrlsRef.current.add(photo.local_preview_url);
+    });
+    setPhotos((current) => [...current, ...localPhotos]);
+
+    const results = await Promise.all(localPhotos.map(async (localPhoto, index) => {
+      try {
+        const uploadedPhoto = await uploadPhoto(files[index], templateId);
+        replaceLocalPhoto(localPhoto, uploadedPhoto);
+        return null;
+      } catch (err) {
+        setPhotos((current) => current.map((photo) => (
+          photo.id === localPhoto.id ? { ...photo, upload_status: 'error' } : photo
+        )));
+        return err;
       }
-      setPhotos((current) => [...current, ...uploaded]);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed');
-    } finally {
-      setUploading(false);
-      event.target.value = '';
+    }));
+
+    const failedUpload = results.find(Boolean);
+    if (failedUpload) {
+      setError(failedUpload instanceof Error ? failedUpload.message : 'Upload failed');
     }
+    setUploading(false);
+  }
+
+  function replaceLocalPhoto(localPhoto: UploadedPhoto, uploadedPhoto: UploadedPhoto) {
+    const readyPhoto: UploadedPhoto = {
+      ...uploadedPhoto,
+      local_preview_url: localPhoto.local_preview_url,
+      upload_status: 'ready',
+    };
+
+    setPhotos((current) => current.map((photo) => (photo.id === localPhoto.id ? readyPhoto : photo)));
+    setSelectedPhotoIds((current) => {
+      if (!current.has(localPhoto.id)) return current;
+      const next = new Set(current);
+      next.delete(localPhoto.id);
+      next.add(readyPhoto.id);
+      return next;
+    });
+    setAssignments((current) => {
+      const next = Object.entries(current).reduce<FrameAssignments>((acc, [frameId, photo]) => {
+        acc[frameId] = photo?.id === localPhoto.id ? readyPhoto : photo;
+        return acc;
+      }, {});
+      persistAssignments(templateId, next);
+      return next;
+    });
   }
 
   function choosePhoto(photo: UploadedPhoto) {
@@ -231,13 +280,21 @@ export default function EditorPage() {
     setDeletingPhotos(true);
     setError(null);
     try {
-      await deleteUploadedPhotos(selectedPhotos);
+      const remotePhotos = selectedPhotos.filter((photo) => photo.bucket && photo.storage_path);
+      if (remotePhotos.length > 0) {
+        await deleteUploadedPhotos(remotePhotos);
+      }
       const deletedIds = new Set(selectedPhotos.map((photo) => photo.id));
       const nextAssignments = Object.entries(assignments).reduce<FrameAssignments>((acc, [frameId, photo]) => {
         if (photo && !deletedIds.has(photo.id)) acc[frameId] = photo;
         return acc;
       }, {});
 
+      selectedPhotos.forEach((photo) => {
+        if (!photo.local_preview_url) return;
+        URL.revokeObjectURL(photo.local_preview_url);
+        localPreviewUrlsRef.current.delete(photo.local_preview_url);
+      });
       setPhotos((current) => current.filter((photo) => !deletedIds.has(photo.id)));
       setAssignments(nextAssignments);
       persistAssignments(templateId, nextAssignments);
@@ -319,6 +376,10 @@ export default function EditorPage() {
       setError('The collage is still loading. Please try again in a moment.');
       return;
     }
+    if (hasPendingAssignedUploads) {
+      setError('Some selected photos are still uploading. Please try again in a moment.');
+      return;
+    }
 
     setDownloading(true);
     setError(null);
@@ -336,7 +397,7 @@ export default function EditorPage() {
   }
 
   function openPreview() {
-    if (!downloadSvg) {
+    if (!canDownload) {
       setError('The collage is still loading. Please try again in a moment.');
       return;
     }
@@ -399,11 +460,11 @@ export default function EditorPage() {
             type="button"
             className="icon-button"
             onClick={openPreview}
-            disabled={!downloadSvg}
+            disabled={!canDownload}
             aria-label="Preview collage"
             title="Preview collage"
           >
-            <Icon name="image" size={20} />
+            <Icon name="eye" size={20} />
           </button>
         </div>
       )}
@@ -441,7 +502,7 @@ export default function EditorPage() {
                 <Icon name="upload" size={16} />
                 {uploading ? 'Uploading' : 'Upload'}
               </button>
-              <button className="quick-chip" onClick={downloadCollage} disabled={!downloadSvg || downloading}>
+              <button className="quick-chip" onClick={downloadCollage} disabled={!canDownload || downloading}>
                 <Icon name="download" size={16} />
                 {downloading ? 'Downloading' : 'Download'}
               </button>
@@ -486,7 +547,7 @@ export default function EditorPage() {
                       type="button"
                       className="sheet-icon-button"
                       onClick={downloadCollage}
-                      disabled={!downloadSvg || downloading}
+                      disabled={!canDownload || downloading}
                       aria-label="Download PNG"
                       title="Download PNG"
                     >
@@ -517,6 +578,7 @@ export default function EditorPage() {
                     const isAssignedToCurrentFrame = selectedPhotoId === photo.id;
                     const selectedIndex = selectedPhotos.findIndex((selectedPhoto) => selectedPhoto.id === photo.id);
                     const isSelectedForAction = selectedIndex >= 0;
+                    const photoDisplayUrl = getPhotoDisplayUrl(photo);
 
                     return (
                       <button
@@ -546,7 +608,13 @@ export default function EditorPage() {
                         }}
                         disabled={saving || deletingPhotos}
                       >
-                        {photo.public_url && <img src={photo.public_url} alt={photo.file_name ?? 'Uploaded photo'} />}
+                        {photoDisplayUrl && <img src={photoDisplayUrl} alt={photo.file_name ?? 'Uploaded photo'} />}
+                        {photo.upload_status === 'uploading' && (
+                          <span className="photo-choice-status">Uploading...</span>
+                        )}
+                        {photo.upload_status === 'error' && (
+                          <span className="photo-choice-status photo-choice-status-error">Failed</span>
+                        )}
                         {isSelectedForAction && (
                           <span className="photo-choice-select-badge">{selectedIndex + 1}</span>
                         )}
@@ -648,6 +716,36 @@ function loadStoredAssignments(templateId: string, photos: UploadedPhoto[]) {
   } catch {
     return {};
   }
+}
+
+function createLocalPreviewPhoto(file: File, templateId: string): UploadedPhoto {
+  return {
+    id: `local-${createLocalId()}`,
+    client_session_id: 'local',
+    template_id: templateId,
+    frame_id: null,
+    bucket: '',
+    storage_path: '',
+    public_url: null,
+    local_preview_url: URL.createObjectURL(file),
+    upload_status: 'uploading',
+    file_name: file.name,
+    mime_type: file.type,
+    file_size: file.size,
+    created_at: new Date().toISOString(),
+  };
+}
+
+function getPhotoDisplayUrl(photo?: UploadedPhoto) {
+  return photo?.local_preview_url || photo?.public_url || null;
+}
+
+function createLocalId() {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
 }
 
 function persistAssignments(templateId: string, assignments: FrameAssignments) {

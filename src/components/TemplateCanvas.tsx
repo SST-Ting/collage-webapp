@@ -168,12 +168,18 @@ function TemplateSvgImage({
 
   const renderedSvg = useMemo(() => {
     if (!svgText) return null;
-    return replaceSvgImageHrefs(svgText, frames, assignments);
+    return replaceSvgImageHrefs(svgText, frames, assignments, getPhotoDisplayUrl);
+  }, [svgText, frames, assignments]);
+
+  const renderedExportSvg = useMemo(() => {
+    if (!svgText) return null;
+    return replaceSvgImageHrefs(svgText, frames, assignments, getPhotoExportUrl);
   }, [svgText, frames, assignments]);
 
   useEffect(() => {
-    onRenderedSvgChange?.(renderedSvg);
-  }, [onRenderedSvgChange, renderedSvg]);
+    onRenderedSvgChange?.(renderedExportSvg);
+  }, [onRenderedSvgChange, renderedExportSvg]);
+
 
   if (!template.preview_image_url) return null;
   if (!renderedSvg) return <TemplateBaseImage template={template} />;
@@ -234,6 +240,7 @@ function FrameButton({
   const style = frameStyle(frame, template, displayCrop);
   const hasClipPolygon = Boolean(getClipPolygon(frame));
   const isSvgReplace = isSvgImageReplaceFrame(frame);
+  const photoDisplayUrl = getPhotoDisplayUrl(photo);
 
   return (
     <button
@@ -242,7 +249,7 @@ function FrameButton({
         selected ? 'frame-button-selected' : '',
         hasClipPolygon ? 'frame-button-polygon' : '',
         isSvgReplace ? 'frame-button-svg-replace' : '',
-        photo?.public_url ? 'frame-button-filled' : 'frame-button-empty',
+        photoDisplayUrl ? 'frame-button-filled' : 'frame-button-empty',
       ].filter(Boolean).join(' ')}
       style={{ ...style, borderRadius: `${frame.border_radius}px` }}
       onClick={(event) => {
@@ -254,7 +261,7 @@ function FrameButton({
       {isSvgReplace ? (
         <>
           <span className="frame-button-hit-label">Select frame</span>
-          {!photo?.public_url && (
+          {!photoDisplayUrl && (
             <span className="frame-empty-overlay" aria-hidden="true">
               <span className="frame-empty-icon">
                 <Icon name="plus" size={22} strokeWidth={3} />
@@ -262,8 +269,8 @@ function FrameButton({
             </span>
           )}
         </>
-      ) : photo?.public_url ? (
-        <img src={photo.public_url} alt={photo.file_name ?? `Photo ${index + 1}`} />
+      ) : photoDisplayUrl ? (
+        <img src={photoDisplayUrl} alt={photo?.file_name ?? `Photo ${index + 1}`} />
       ) : (
         <span>
           +<small>Tap 加相</small>
@@ -342,6 +349,7 @@ function replaceSvgImageHrefs(
   svgText: string,
   frames: TemplateFrame[],
   assignments: FrameAssignments,
+  getPhotoUrl: (photo?: UploadedPhoto) => string | null,
 ) {
   const parser = new DOMParser();
   const document = parser.parseFromString(svgText, 'image/svg+xml');
@@ -349,7 +357,7 @@ function replaceSvgImageHrefs(
 
   frames.forEach((frame) => {
     const imageId = getSvgImageId(frame);
-    const photoUrl = assignments[frame.id]?.public_url;
+    const photoUrl = getPhotoUrl(assignments[frame.id]);
     if (!imageId || !photoUrl) return;
 
     const imageElement = findSvgImageElement(document, imageId);
@@ -367,6 +375,14 @@ function replaceSvgImageHrefs(
   root.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
 
   return new XMLSerializer().serializeToString(root);
+}
+
+function getPhotoDisplayUrl(photo?: UploadedPhoto) {
+  return photo?.local_preview_url || photo?.public_url || null;
+}
+
+function getPhotoExportUrl(photo?: UploadedPhoto) {
+  return photo?.public_url || null;
 }
 
 function findSvgImageElement(document: Document, imageId: string) {

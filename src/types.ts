@@ -42,6 +42,8 @@ export type UploadedPhoto = {
   mime_type: string | null;
   file_size: number | null;
   created_at: string;
+  local_preview_url?: string;
+  upload_status?: 'uploading' | 'ready' | 'error';
 };
 
 export type FrameAssignments = Record<string, UploadedPhoto | undefined>;
