@@ -13,11 +13,18 @@ export default function HomePage() {
         </div>
         <h1>用活動相，砌一張海島回憶</h1>
         <p>揀一個 Template，Upload 幾張相，再 Tap 入 photo frame。第一版先試最核心流程。</p>
+        <div className="hero-actions">
         <Link to="/templates">
           <Button variant="primary" icon={<Icon name="layout" />}>
             揀 Template
           </Button>
         </Link>
+          <Link to="/shared">
+            <Button variant="ghost" icon={<Icon name="image" />}>
+              Shared
+            </Button>
+          </Link>
+        </div>
       </section>
 
       <section className="quick-notes">

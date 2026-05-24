@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import HomePage from './pages/HomePage';
 import TemplateListPage from './pages/TemplateListPage';
 import EditorPage from './pages/EditorPage';
+import SharedImagesPage from './pages/SharedImagesPage';
 
 export default function App() {
   useMobileViewportVars();
@@ -11,6 +12,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<HomePage />} />
       <Route path="/templates" element={<TemplateListPage />} />
+      <Route path="/shared" element={<SharedImagesPage />} />
       <Route path="/upload/:templateId" element={<UploadRedirect />} />
       <Route path="/editor/:templateId" element={<EditorPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />

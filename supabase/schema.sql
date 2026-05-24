@@ -46,15 +46,46 @@ create table if not exists public.uploaded_photos (
   created_at timestamptz default now()
 );
 
+create table if not exists public.shared_images (
+  id uuid primary key default gen_random_uuid(),
+  client_session_id text not null,
+  template_id uuid references public.templates(id),
+  bucket text not null default 'shared-images',
+  storage_path text not null,
+  public_url text,
+  file_name text,
+  mime_type text,
+  file_size bigint,
+  width int,
+  height int,
+  created_at timestamptz default now()
+);
+
+create table if not exists public.shared_image_favorites (
+  id uuid primary key default gen_random_uuid(),
+  shared_image_id uuid references public.shared_images(id) on delete cascade,
+  client_session_id text not null,
+  created_at timestamptz default now(),
+  unique(shared_image_id, client_session_id)
+);
+
 create index if not exists idx_template_frames_template_id
   on public.template_frames(template_id);
 
 create index if not exists idx_uploaded_photos_session_template
   on public.uploaded_photos(client_session_id, template_id);
 
+create index if not exists idx_shared_images_created_at
+  on public.shared_images(created_at desc);
+
+create index if not exists idx_shared_image_favorites_image_id
+  on public.shared_image_favorites(shared_image_id);
+
 alter table public.templates enable row level security;
 alter table public.template_frames enable row level security;
 alter table public.uploaded_photos enable row level security;
+alter table public.shared_images enable row level security;
+alter table public.shared_image_favorites enable row level security;
 
 drop policy if exists "prototype read templates" on public.templates;
 create policy "prototype read templates"
@@ -93,6 +124,36 @@ create policy "prototype delete uploaded photos"
   to anon
   using (true);
 
+drop policy if exists "prototype read shared images" on public.shared_images;
+create policy "prototype read shared images"
+  on public.shared_images for select
+  to anon
+  using (true);
+
+drop policy if exists "prototype insert shared images" on public.shared_images;
+create policy "prototype insert shared images"
+  on public.shared_images for insert
+  to anon
+  with check (true);
+
+drop policy if exists "prototype read shared image favorites" on public.shared_image_favorites;
+create policy "prototype read shared image favorites"
+  on public.shared_image_favorites for select
+  to anon
+  using (true);
+
+drop policy if exists "prototype insert shared image favorites" on public.shared_image_favorites;
+create policy "prototype insert shared image favorites"
+  on public.shared_image_favorites for insert
+  to anon
+  with check (true);
+
+drop policy if exists "prototype delete shared image favorites" on public.shared_image_favorites;
+create policy "prototype delete shared image favorites"
+  on public.shared_image_favorites for delete
+  to anon
+  using (true);
+
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (
   'user-photos',
@@ -100,6 +161,20 @@ values (
   true,
   10485760,
   array['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+)
+on conflict (id) do update
+set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'shared-images',
+  'shared-images',
+  true,
+  15728640,
+  array['image/png']
 )
 on conflict (id) do update
 set
@@ -131,6 +206,18 @@ create policy "prototype delete user photos"
   on storage.objects for delete
   to anon
   using (bucket_id = 'user-photos');
+
+drop policy if exists "prototype read shared images bucket" on storage.objects;
+create policy "prototype read shared images bucket"
+  on storage.objects for select
+  to anon
+  using (bucket_id = 'shared-images');
+
+drop policy if exists "prototype upload shared images bucket" on storage.objects;
+create policy "prototype upload shared images bucket"
+  on storage.objects for insert
+  to anon
+  with check (bucket_id = 'shared-images');
 
 with upsert_template as (
   insert into public.templates

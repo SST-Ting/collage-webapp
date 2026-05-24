@@ -47,3 +47,20 @@ export type UploadedPhoto = {
 };
 
 export type FrameAssignments = Record<string, UploadedPhoto | undefined>;
+
+export type SharedImage = {
+  id: string;
+  client_session_id: string;
+  template_id: string | null;
+  bucket: string;
+  storage_path: string;
+  public_url: string | null;
+  file_name: string | null;
+  mime_type: string | null;
+  file_size: number | null;
+  width: number | null;
+  height: number | null;
+  created_at: string;
+  favorite_count?: number;
+  is_favorited?: boolean;
+};

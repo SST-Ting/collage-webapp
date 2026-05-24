@@ -83,6 +83,13 @@
   line-height: 1.55;
 }
 
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
 .quick-notes {
   display: grid;
   gap: 10px;

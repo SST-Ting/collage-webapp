@@ -1,9 +1,10 @@
 import { supabase } from './supabase';
 import { getClientSessionId } from './session';
 import { sanitizeFileName } from './image';
-import type { Template, TemplateFrame, UploadedPhoto } from '../types';
+import type { SharedImage, Template, TemplateFrame, UploadedPhoto } from '../types';
 
 const USER_PHOTOS_BUCKET = 'user-photos';
+const SHARED_IMAGES_BUCKET = 'shared-images';
 
 function normalizeFrame(frame: TemplateFrame): TemplateFrame {
   return {
@@ -202,4 +203,131 @@ export async function assignPhotoToFrame(photo: UploadedPhoto, frameId: string, 
 
   if (error) throw error;
   return normalizeUploadedPhoto(data as UploadedPhoto);
+}
+
+export async function fetchSharedImages() {
+  const clientSessionId = getClientSessionId();
+  const { data, error } = await supabase
+    .from('shared_images')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  const images = (data ?? []).map((image) => normalizeSharedImage(image as SharedImage));
+  if (images.length === 0) return images;
+
+  const imageIds = images.map((image) => image.id);
+  const { data: favorites, error: favoritesError } = await supabase
+    .from('shared_image_favorites')
+    .select('shared_image_id, client_session_id')
+    .in('shared_image_id', imageIds);
+
+  if (favoritesError) {
+    return images.map((image) => ({
+      ...image,
+      favorite_count: 0,
+      is_favorited: false,
+    }));
+  }
+
+  const favoriteCounts = new Map<string, number>();
+  const favoritedImageIds = new Set<string>();
+  for (const favorite of favorites ?? []) {
+    const imageId = String(favorite.shared_image_id);
+    favoriteCounts.set(imageId, (favoriteCounts.get(imageId) ?? 0) + 1);
+    if (favorite.client_session_id === clientSessionId) favoritedImageIds.add(imageId);
+  }
+
+  return images.map((image) => ({
+    ...image,
+    favorite_count: favoriteCounts.get(image.id) ?? 0,
+    is_favorited: favoritedImageIds.has(image.id),
+  }));
+}
+
+export async function uploadSharedImage(
+  blob: Blob,
+  options: {
+    templateId: string;
+    templateName: string;
+    width: number;
+    height: number;
+  },
+) {
+  const clientSessionId = getClientSessionId();
+  const fileName = `${sanitizeFileName(options.templateName) || 'collage'}-${Date.now()}.png`;
+  const storagePath = `${clientSessionId}/${options.templateId}/${Date.now()}-${createUploadId()}-${fileName}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from(SHARED_IMAGES_BUCKET)
+    .upload(storagePath, blob, {
+      cacheControl: '31536000',
+      contentType: 'image/png',
+      upsert: false,
+    });
+
+  if (uploadError) throw uploadError;
+
+  const { data: publicUrlData } = supabase.storage
+    .from(SHARED_IMAGES_BUCKET)
+    .getPublicUrl(storagePath);
+
+  const { data, error } = await supabase
+    .from('shared_images')
+    .insert({
+      client_session_id: clientSessionId,
+      template_id: options.templateId,
+      bucket: SHARED_IMAGES_BUCKET,
+      storage_path: storagePath,
+      public_url: publicUrlData.publicUrl,
+      file_name: fileName,
+      mime_type: 'image/png',
+      file_size: blob.size,
+      width: options.width,
+      height: options.height,
+    })
+    .select('*')
+    .single();
+
+  if (error) throw error;
+  return normalizeSharedImage(data as SharedImage);
+}
+
+function normalizeSharedImage(image: SharedImage): SharedImage {
+  if (image.public_url || !image.bucket || !image.storage_path) return image;
+
+  const { data } = supabase.storage
+    .from(image.bucket)
+    .getPublicUrl(image.storage_path);
+
+  return {
+    ...image,
+    public_url: data.publicUrl,
+  };
+}
+
+export async function setSharedImageFavorite(image: SharedImage, favorited: boolean) {
+  const clientSessionId = getClientSessionId();
+
+  if (favorited) {
+    const { error } = await supabase
+      .from('shared_image_favorites')
+      .upsert({
+        shared_image_id: image.id,
+        client_session_id: clientSessionId,
+      }, {
+        onConflict: 'shared_image_id,client_session_id',
+      });
+
+    if (error) throw error;
+    return;
+  }
+
+  const { error } = await supabase
+    .from('shared_image_favorites')
+    .delete()
+    .eq('shared_image_id', image.id)
+    .eq('client_session_id', clientSessionId);
+
+  if (error) throw error;
 }

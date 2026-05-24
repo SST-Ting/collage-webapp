@@ -1,13 +1,14 @@
 ﻿import { ChangeEvent, PointerEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import Icon from '../components/Icon';
 import { AppShell, Button, ErrorCard, LoadingCard } from '../components/Layout';
 import { EditorCanvas } from '../components/TemplateCanvas';
-import { deleteUploadedPhotos, fetchTemplate, fetchUploadedPhotos, uploadPhoto } from '../lib/api';
+import { deleteUploadedPhotos, fetchTemplate, fetchUploadedPhotos, uploadPhoto, uploadSharedImage } from '../lib/api';
 import type { FrameAssignments, Template, TemplateFrame, UploadedPhoto } from '../types';
 
 export default function EditorPage() {
   const { templateId = '' } = useParams();
+  const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const sheetDragStartRef = useRef<number | null>(null);
   const sheetDragOffsetRef = useRef(0);
@@ -30,6 +31,7 @@ export default function EditorPage() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [horizontalMode, setHorizontalMode] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const [deletingPhotos, setDeletingPhotos] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -384,15 +386,40 @@ export default function EditorPage() {
     setDownloading(true);
     setError(null);
     try {
-      const width = Math.max(1, Math.round(Number(template.base_width)));
-      const height = Math.max(1, Math.round(Number(template.base_height)));
-      const svgForPng = await inlineRemoteImages(downloadSvg);
-      const pngBlob = await renderSvgToPng(svgForPng, width, height);
+      const { blob: pngBlob } = await createCollagePngBlob(template, downloadSvg);
       downloadBlob(pngBlob, `${safeFileName(template.name)}.png`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'PNG download failed');
     } finally {
       setDownloading(false);
+    }
+  }
+
+  async function shareCollage() {
+    if (!template || !downloadSvg) {
+      setError('The collage is still loading. Please try again in a moment.');
+      return;
+    }
+    if (hasPendingAssignedUploads) {
+      setError('Some selected photos are still uploading. Please try again in a moment.');
+      return;
+    }
+
+    setSharing(true);
+    setError(null);
+    try {
+      const { blob, width, height } = await createCollagePngBlob(template, downloadSvg);
+      await uploadSharedImage(blob, {
+        templateId,
+        templateName: template.name,
+        width,
+        height,
+      });
+      navigate('/shared');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Share failed');
+    } finally {
+      setSharing(false);
     }
   }
 
@@ -465,6 +492,16 @@ export default function EditorPage() {
             title="Preview collage"
           >
             <Icon name="eye" size={20} />
+          </button>
+          <button
+            type="button"
+            className="icon-button"
+            onClick={shareCollage}
+            disabled={!canDownload || sharing}
+            aria-label="Share collage"
+            title="Share collage"
+          >
+            <Icon name="share" size={20} />
           </button>
         </div>
       )}
@@ -694,6 +731,25 @@ export default function EditorPage() {
                 </div>
               </div>
             )}
+
+            {(downloading || sharing) && (
+              <div
+                className="download-message-backdrop"
+                role="status"
+                aria-live="polite"
+                aria-label={sharing ? 'Sharing image' : 'Downloading image'}
+              >
+                <div className="download-message-box">
+                  <div className="loader-dots" aria-hidden="true">
+                    <span />
+                    <span />
+                    <span />
+                  </div>
+                  <strong>{sharing ? 'Sharing image...' : 'Downloading image...'}</strong>
+                  <p>{sharing ? 'Please wait while we upload your collage.' : 'Please wait while we prepare your PNG.'}</p>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>
@@ -781,6 +837,15 @@ function formatFrameLabel(frame: TemplateFrame) {
 function safeFileName(value: string) {
   const cleaned = value.trim().replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, '-');
   return cleaned || 'event-collage';
+}
+
+async function createCollagePngBlob(template: Template, svgText: string) {
+  const width = Math.max(1, Math.round(Number(template.base_width)));
+  const height = Math.max(1, Math.round(Number(template.base_height)));
+  const svgForPng = await inlineRemoteImages(svgText);
+  const blob = await renderSvgToPng(svgForPng, width, height);
+
+  return { blob, width, height };
 }
 
 const XLINK_NS = 'http://www.w3.org/1999/xlink';

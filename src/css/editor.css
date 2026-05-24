@@ -798,6 +798,45 @@
   height: auto;
 }
 
+.download-message-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(42, 31, 26, 0.46);
+  backdrop-filter: blur(3px);
+}
+
+.download-message-box {
+  width: min(280px, 86vw);
+  border: 2px solid var(--sb-lava);
+  border-radius: 18px;
+  background: #FEFBF4;
+  color: var(--sb-lava);
+  padding: 20px 18px;
+  text-align: center;
+  box-shadow: 0 6px 0 rgba(42, 31, 26, 0.22), 0 22px 46px rgba(0, 0, 0, 0.28);
+}
+
+.download-message-box .loader-dots {
+  margin-bottom: 12px;
+}
+
+.download-message-box strong {
+  display: block;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.download-message-box p {
+  margin: 6px 0 0;
+  color: var(--sb-volcano);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
 .editor-page-horizontal.editor-page-sheet-open .editor-actions {
   opacity: 0;
   pointer-events: none;
