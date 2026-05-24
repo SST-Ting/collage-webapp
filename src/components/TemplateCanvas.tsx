@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import Icon from './Icon';
 import type { FrameAssignments, Template, TemplateFrame, UploadedPhoto } from '../types';
 import type React from 'react';
 
@@ -36,6 +37,7 @@ type EditorCanvasProps = {
   template: Template;
   assignments: FrameAssignments;
   selectedFrameId?: string;
+  progressLabel?: string;
   onFrameClick: (frame: TemplateFrame) => void;
   onCanvasClick?: () => void;
   onRenderedSvgChange?: (svg: string | null) => void;
@@ -45,6 +47,7 @@ export function EditorCanvas({
   template,
   assignments,
   selectedFrameId,
+  progressLabel,
   onFrameClick,
   onCanvasClick,
   onRenderedSvgChange,
@@ -65,6 +68,7 @@ export function EditorCanvas({
         onClick={onCanvasClick}
         style={{ aspectRatio: `${template.base_width} / ${visibleHeight}` }}
       >
+        {progressLabel && <div className="canvas-fill-counter">{progressLabel}</div>}
         <div
           className="editor-template-window"
           style={{ aspectRatio: `${template.base_width} / ${visibleHeight}` }}
@@ -248,7 +252,16 @@ function FrameButton({
       aria-label={`Select ${frame.name ?? `photo frame ${index + 1}`}`}
     >
       {isSvgReplace ? (
-        <span className="frame-button-hit-label">Select frame</span>
+        <>
+          <span className="frame-button-hit-label">Select frame</span>
+          {!photo?.public_url && (
+            <span className="frame-empty-overlay" aria-hidden="true">
+              <span className="frame-empty-icon">
+                <Icon name="plus" size={22} strokeWidth={3} />
+              </span>
+            </span>
+          )}
+        </>
       ) : photo?.public_url ? (
         <img src={photo.public_url} alt={photo.file_name ?? `Photo ${index + 1}`} />
       ) : (

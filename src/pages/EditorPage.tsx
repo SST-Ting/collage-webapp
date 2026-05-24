@@ -68,6 +68,18 @@ export default function EditorPage() {
     () => Object.values(assignments).filter(Boolean).length,
     [assignments],
   );
+  const progressLabel = template
+    ? `${filledCount}/${template.template_frames?.length ?? 0} filled`
+    : '';
+
+  function resetSheetDragState() {
+    sheetDragStartRef.current = null;
+    sheetDragOffsetRef.current = 0;
+    sheetDragPointerRef.current = null;
+    ignoreNextPhotoClickRef.current = false;
+    setSheetDragOffset(0);
+    setIsSheetDragging(false);
+  }
 
   async function handleFiles(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
@@ -160,6 +172,7 @@ export default function EditorPage() {
     sheetDragStartRef.current = null;
     sheetDragOffsetRef.current = 0;
     sheetDragPointerRef.current = null;
+    ignoreNextPhotoClickRef.current = false;
 
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
@@ -168,22 +181,22 @@ export default function EditorPage() {
     setIsSheetDragging(false);
 
     if (offset > 72) {
-      setSheetDragOffset(0);
+      resetSheetDragState();
       setSelectedFrame(null);
       return;
     }
 
-    setSheetDragOffset(0);
+    resetSheetDragState();
   }
 
   function cancelSheetDrag(event: PointerEvent<HTMLElement>) {
     if (sheetDragPointerRef.current !== event.pointerId) return;
 
-    sheetDragStartRef.current = null;
-    sheetDragOffsetRef.current = 0;
-    sheetDragPointerRef.current = null;
-    setSheetDragOffset(0);
-    setIsSheetDragging(false);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    resetSheetDragState();
   }
 
   async function downloadCollage() {
@@ -227,6 +240,7 @@ export default function EditorPage() {
               template={template}
               assignments={assignments}
               selectedFrameId={selectedFrame?.id}
+              progressLabel={saving ? 'Saving...' : progressLabel}
               onFrameClick={selectFrame}
               onCanvasClick={() => setSelectedFrame(null)}
               onRenderedSvgChange={setDownloadSvg}
@@ -245,9 +259,6 @@ export default function EditorPage() {
                 <Icon name="download" size={16} />
                 {downloading ? 'Downloading' : 'Download'}
               </button>
-              <span className="save-indicator">
-                {saving ? 'Saving...' : `${filledCount}/${template.template_frames?.length ?? 0} filled`}
-              </span>
             </div>
 
             {selectedFrame && (
