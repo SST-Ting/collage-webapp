@@ -62,6 +62,30 @@ export default function EditorPage() {
     setIsSheetDragging(false);
   }, [selectedFrame]);
 
+  useEffect(() => {
+    if (!selectedFrame) return undefined;
+
+    const scrollY = window.scrollY;
+    const bodyStyle = document.body.style;
+    const previousPosition = bodyStyle.position;
+    const previousTop = bodyStyle.top;
+    const previousWidth = bodyStyle.width;
+    const previousOverflow = bodyStyle.overflow;
+
+    bodyStyle.position = 'fixed';
+    bodyStyle.top = `-${scrollY}px`;
+    bodyStyle.width = '100%';
+    bodyStyle.overflow = 'hidden';
+
+    return () => {
+      bodyStyle.position = previousPosition;
+      bodyStyle.top = previousTop;
+      bodyStyle.width = previousWidth;
+      bodyStyle.overflow = previousOverflow;
+      window.scrollTo(0, scrollY);
+    };
+  }, [selectedFrame]);
+
   const selectedPhotoId = selectedFrame ? assignments[selectedFrame.id]?.id : undefined;
 
   const filledCount = useMemo(

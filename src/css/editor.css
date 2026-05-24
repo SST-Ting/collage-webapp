@@ -386,8 +386,10 @@
   display: flex;
   gap: 10px;
   overflow-x: auto;
+  overscroll-behavior: contain;
   padding-bottom: 4px;
   align-items: stretch;
+  touch-action: pan-x;
 }
 
 .photo-choice img,
