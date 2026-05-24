@@ -83,6 +83,35 @@ img {
   touch-action: pan-x;
 }
 
+.app-shell-editor-horizontal {
+  width: min(100%, 900px);
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .app-shell-editor-horizontal {
+    width: 100vw;
+    height: 100svh;
+    min-height: 0;
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .app-shell-editor-horizontal .app-bar {
+    min-height: 46px;
+    padding: 6px 12px;
+  }
+
+  .app-shell-editor-horizontal .app-bar-title {
+    font-size: 15px;
+  }
+
+  .app-shell-editor-horizontal .icon-button {
+    width: 36px;
+    height: 36px;
+  }
+}
+
 .app-bar {
   position: sticky;
   flex: 0 0 auto;
@@ -90,7 +119,7 @@ img {
   z-index: 30;
   min-height: 62px;
   display: grid;
-  grid-template-columns: 48px 1fr 48px;
+  grid-template-columns: 48px 1fr minmax(48px, auto);
   align-items: center;
   padding: 10px 14px;
   background: rgba(255, 253, 247, 0.88);
@@ -119,6 +148,13 @@ img {
   justify-content: flex-end;
 }
 
+.editor-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .icon-button {
   width: 42px;
   height: 42px;
@@ -129,9 +165,19 @@ img {
   place-items: center;
 }
 
+.icon-button-active {
+  background: var(--sb-sun);
+  color: var(--sb-lava);
+}
+
 .app-bar-dark .icon-button {
   background: rgba(255, 253, 247, 0.12);
   color: var(--sb-paper);
+}
+
+.app-bar-dark .icon-button-active {
+  background: var(--sb-sun);
+  color: var(--sb-lava);
 }
 
 .route-content {

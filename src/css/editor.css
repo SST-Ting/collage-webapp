@@ -34,6 +34,70 @@
   box-shadow: 0 7px 0 #5c4a3e, 0 22px 44px rgba(0, 0, 0, 0.4);
 }
 
+.editor-page-horizontal {
+  justify-content: center;
+}
+
+.editor-page-horizontal .editor-canvas-wrap {
+  flex: 0 1 auto;
+  width: 100%;
+  min-height: 0;
+}
+
+.editor-page-horizontal .editor-canvas {
+  width: 100%;
+  height: auto;
+  max-height: calc(100svh - 170px - var(--editor-bottom-inset));
+}
+
+.editor-page-horizontal .canvas-fill-counter {
+  top: 5%;
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .editor-page-horizontal {
+    --editor-actions-gap: 6px;
+    padding: 6px 10px calc(8px + var(--editor-bottom-inset));
+    gap: 6px;
+  }
+
+  .editor-page-horizontal .editor-canvas-wrap {
+    flex: 1 1 auto;
+  }
+
+  .editor-page-horizontal .editor-canvas {
+    width: auto;
+    height: 100%;
+    max-width: calc(100vw - 20px);
+    max-height: calc(100svh - 108px - var(--editor-bottom-inset));
+    border-radius: 14px;
+    box-shadow: 0 4px 0 #5c4a3e, 0 14px 28px rgba(0, 0, 0, 0.32);
+  }
+
+  .editor-page-horizontal .canvas-fill-counter {
+    top: 4%;
+    min-width: 82px;
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+
+  .editor-page-horizontal .editor-actions {
+    gap: 5px 7px;
+    padding-bottom: 0;
+  }
+
+  .editor-page-horizontal .quick-chip {
+    min-height: 30px;
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+
+  .editor-page-horizontal .frame-empty-icon {
+    width: 34px;
+    height: 34px;
+  }
+}
+
 .editor-template-window {
   position: absolute;
   left: 50%;

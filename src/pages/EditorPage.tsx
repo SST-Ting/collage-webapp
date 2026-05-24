@@ -27,6 +27,7 @@ export default function EditorPage() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [horizontalMode, setHorizontalMode] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [deletingPhotos, setDeletingPhotos] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,6 +40,7 @@ export default function EditorPage() {
       .then(([templateData, uploaded]) => {
         if (!alive) return;
         setTemplate(templateData);
+        setHorizontalMode(Number(templateData.base_width) > Number(templateData.base_height));
         setPhotos(uploaded);
         setAssignments(loadStoredAssignments(templateId, uploaded));
         setSelectedFrame(null);
@@ -107,6 +109,10 @@ export default function EditorPage() {
   const progressLabel = template
     ? `${filledCount}/${template.template_frames?.length ?? 0} filled`
     : '';
+  const editorPageClassName = [
+    selectedFrame ? 'editor-page editor-page-sheet-open' : 'editor-page editor-page-sheet-closed',
+    horizontalMode ? 'editor-page-horizontal' : '',
+  ].filter(Boolean).join(' ');
 
   function resetSheetDragState() {
     sheetDragStartRef.current = null;
@@ -338,25 +344,63 @@ export default function EditorPage() {
     setPreviewOpen(true);
   }
 
+  async function toggleHorizontalMode() {
+    const nextHorizontalMode = !horizontalMode;
+    setHorizontalMode(nextHorizontalMode);
+
+    try {
+      const orientation = screen.orientation as ScreenOrientation & {
+        lock?: (orientation: 'landscape' | 'portrait') => Promise<void>;
+        unlock?: () => void;
+      };
+
+      if (nextHorizontalMode) {
+        if (document.fullscreenEnabled && !document.fullscreenElement) {
+          await document.documentElement.requestFullscreen();
+        }
+        await orientation.lock?.('landscape');
+      } else {
+        orientation.unlock?.();
+        if (document.fullscreenElement) {
+          await document.exitFullscreen();
+        }
+      }
+    } catch {
+      // Some mobile browsers, especially iOS Safari, do not allow orientation lock.
+    }
+  }
+
   return (
     <AppShell
       title="Photo Editor"
       backTo="/templates"
       dark
+      className={horizontalMode ? 'app-shell-editor-horizontal' : ''}
       rightAction={(
-        <button
-          type="button"
-          className="icon-button"
-          onClick={openPreview}
-          disabled={!downloadSvg}
-          aria-label="Preview collage"
-          title="Preview collage"
-        >
-          <Icon name="image" size={20} />
-        </button>
+        <div className="editor-header-actions">
+          <button
+            type="button"
+            className={horizontalMode ? 'icon-button icon-button-active' : 'icon-button'}
+            onClick={toggleHorizontalMode}
+            aria-label={horizontalMode ? 'Use standard editor layout' : 'Use horizontal editor layout'}
+            title={horizontalMode ? 'Standard layout' : 'Horizontal layout'}
+          >
+            <Icon name="layout" size={20} />
+          </button>
+          <button
+            type="button"
+            className="icon-button"
+            onClick={openPreview}
+            disabled={!downloadSvg}
+            aria-label="Preview collage"
+            title="Preview collage"
+          >
+            <Icon name="image" size={20} />
+          </button>
+        </div>
       )}
     >
-      <div className={selectedFrame ? 'editor-page editor-page-sheet-open' : 'editor-page editor-page-sheet-closed'}>
+      <div className={editorPageClassName}>
         {loading && <LoadingCard message="Loading editor..." />}
         {error && <ErrorCard message={error} />}
         {!loading && template && (
@@ -760,4 +804,3 @@ function downloadBlob(blob: Blob, fileName: string) {
   link.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 500);
 }
-
