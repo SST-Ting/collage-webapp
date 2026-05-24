@@ -777,3 +777,89 @@
   width: 100%;
   height: auto;
 }
+
+.editor-page-horizontal.editor-page-sheet-open .editor-actions {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.editor-page-horizontal .photo-picker-sheet {
+  left: auto;
+  right: max(6px, env(safe-area-inset-right));
+  top: 50px;
+  bottom: max(6px, var(--editor-bottom-inset));
+  width: clamp(172px, 22vw, 220px);
+  min-height: 0;
+  max-height: none;
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  padding: 8px;
+  overflow: hidden;
+}
+
+.editor-page-horizontal .sheet-handle {
+  display: none;
+}
+
+.editor-page-horizontal .sheet-title {
+  flex: 0 0 auto;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.editor-page-horizontal .sheet-title strong {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.editor-page-horizontal .sheet-actions {
+  display: grid;
+  grid-template-columns: repeat(2, 28px);
+  gap: 6px;
+}
+
+.editor-page-horizontal .sheet-icon-button {
+  width: 28px;
+  height: 28px;
+}
+
+.editor-page-horizontal .photo-strip {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  gap: 7px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  touch-action: pan-y;
+}
+
+.editor-page-horizontal .photo-choice {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  flex: none;
+  border-radius: 10px;
+}
+
+.editor-page-horizontal .photo-choice img {
+  width: 100%;
+  height: 100%;
+}
+
+.editor-page-horizontal .empty-strip {
+  grid-column: 1 / -1;
+  min-height: 100%;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  text-align: center;
+}
+
+.editor-page-horizontal .empty-strip .sb-button {
+  width: 100%;
+}

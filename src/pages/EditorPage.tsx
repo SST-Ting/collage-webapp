@@ -40,7 +40,7 @@ export default function EditorPage() {
       .then(([templateData, uploaded]) => {
         if (!alive) return;
         setTemplate(templateData);
-        setHorizontalMode(Number(templateData.base_width) > Number(templateData.base_height));
+        setHorizontalMode(false);
         setPhotos(uploaded);
         setAssignments(loadStoredAssignments(templateId, uploaded));
         setSelectedFrame(null);
@@ -346,6 +346,10 @@ export default function EditorPage() {
 
   async function toggleHorizontalMode() {
     const nextHorizontalMode = !horizontalMode;
+    resetSheetDragState();
+    clearPhotoLongPressTimer();
+    setSelectedFrame(null);
+    setSelectedPhotoIds(new Set());
     setHorizontalMode(nextHorizontalMode);
 
     try {
