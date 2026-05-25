@@ -6,35 +6,26 @@ export default function HomePage() {
   return (
     <main className="home-page">
       <section className="hero-sheet">
-        <div className="hero-sticker">MAY 2026</div>
         <div className="logo-row">
           <img src="/assets/logo-mark.svg" alt="" />
-          <span>Splashbook</span>
+          <span>IVELite</span>
         </div>
-        <h1>用活動相，砌一張海島回憶</h1>
-        <p>揀一個 Template，Upload 幾張相，再 Tap 入 photo frame。第一版先試最核心流程。</p>
+        <div className="hero-copy">
+          <span className="hero-kicker">雙洞火山泳綑 + 橋咀島西浮潛</span>
+          <h1>用活動相，砌一張海島回憶</h1>
+          <p>揀一個版面，上載相片，再放入相框。幾分鐘就可以做出屬於今次活動的紀念圖。</p>
+        </div>
         <div className="hero-actions">
-        <Link to="/templates">
-          <Button variant="primary" icon={<Icon name="layout" />}>
-            揀 Template
-          </Button>
-        </Link>
-          <Link to="/shared">
-            <Button variant="ghost" icon={<Icon name="image" />}>
-              Shared
+          <Link to="/templates">
+            <Button variant="primary" icon={<Icon name="layout" />}>
+              開始製作
             </Button>
           </Link>
-        </div>
-      </section>
-
-      <section className="quick-notes">
-        <div>
-          <strong>SPA routes</strong>
-          <span>/templates · /upload · /editor</span>
-        </div>
-        <div>
-          <strong>Supabase</strong>
-          <span>templates · template_frames · uploaded_photos</span>
+          <Link to="/shared">
+            <Button variant="ghost" icon={<Icon name="image" />}>
+              瀏覽分享
+            </Button>
+          </Link>
         </div>
       </section>
     </main>
